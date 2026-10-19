@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Glidepath privacy</title>
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="banner" class="banner"></div>
+<header class="top"><h1>Glidepath</h1><nav><a href="index.html">Replay</a><a href="results.html">Results</a></nav></header>
+<main class="page">
+  <h2>Privacy</h2>
+  <p>This site does not use cookies. It does not track visitors and does not collect personal data.</p>
+  <p>The site loads the map library from unpkg.com and map tiles from tiles.openfreemap.org. Those servers receive your IP address as part of any web request.</p>
+  <p>The flight data shows aircraft, not people. It comes from public ADS-B broadcasts collected by The OpenSky Network and is used for research.</p>
+</main>
+<footer id="footer" class="site"></footer>
+<script src="site.js"></script>
+<script>fetch("data/results.json").then(r => r.json()).then(r => window.glidepathLabel(r.synthetic)).catch(() => {});</script>
+</body>
+</html>

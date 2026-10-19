@@ -1,0 +1,8 @@
+.venv/
+data/raw/
+data/synthetic/
+credentials.json
+collector.log
+__pycache__/
+data/predictions/
+.pytest_cache/

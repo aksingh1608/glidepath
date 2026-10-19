@@ -1,0 +1,63 @@
+:root {
+  --surface: #ffffff;
+  --surface-2: #f6f6f4;
+  --border: #e2e2de;
+  --text: #111111;
+  --text-2: #55554f;
+  --blue: #2a78d6;
+  --orange: #eb6834;
+  --teal: #1baf7a;
+  --amber: #eda100;
+  --gray: #9a9a94;
+  --warn-bg: #fff4d6;
+  --warn-text: #5a4300;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+body {
+  background: var(--surface);
+  color: var(--text);
+  font: 15px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+a { color: var(--blue); }
+.banner {
+  background: var(--warn-bg);
+  color: var(--warn-text);
+  border-bottom: 1px solid #f0dc9c;
+  padding: 8px 16px;
+  font-size: 14px;
+}
+.banner.synthetic { background: #fde2e1; color: #6b1210; border-bottom-color: #f2b8b5; font-weight: 600; }
+header.top {
+  display: flex; align-items: baseline; gap: 16px; flex-wrap: wrap;
+  padding: 12px 16px; border-bottom: 1px solid var(--border);
+}
+header.top h1 { font-size: 18px; margin: 0; }
+header.top nav a { margin-right: 14px; text-decoration: none; }
+header.top nav a.active { color: var(--text); font-weight: 600; }
+main.page { max-width: 980px; margin: 0 auto; padding: 16px; }
+main.page h2 { font-size: 18px; margin-top: 28px; }
+main.page h3 { font-size: 15px; margin-top: 20px; }
+main.page img { max-width: 100%; height: auto; border: 1px solid var(--border); }
+footer.site {
+  border-top: 1px solid var(--border); color: var(--text-2); font-size: 13px;
+  padding: 12px 16px; margin-top: 24px;
+}
+footer.site a { margin-right: 12px; }
+button, .btn {
+  font: inherit; font-size: 14px; border: 1px solid var(--border); background: var(--surface);
+  color: var(--text); border-radius: 4px; padding: 6px 12px; cursor: pointer;
+}
+button.on { background: var(--blue); border-color: var(--blue); color: #ffffff; }
+button:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
+.table-wrap { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; font-size: 14px; }
+th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--border); white-space: nowrap; }
+th { color: var(--text-2); font-weight: 600; }
+td.num { font-variant-numeric: tabular-nums; }
+.status { font-weight: 600; }
+.status.supported { color: #11744f; }
+.status.not-supported { color: #a33a12; }
+.status.unclear { color: var(--text-2); }
+.headline { font-size: 18px; font-weight: 600; margin: 8px 0 4px; }
+.muted { color: var(--text-2); }

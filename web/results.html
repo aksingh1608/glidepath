@@ -1,0 +1,152 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Glidepath results</title>
+<meta name="description" content="Pilot results: calibrated landing time intervals and trust lead for Frankfurt arrivals.">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="banner" class="banner"></div>
+<header class="top">
+  <h1>Glidepath</h1>
+  <nav><a href="index.html">Replay</a><a href="results.html" class="active">Results</a></nav>
+</header>
+<main class="page">
+  <p class="headline" id="headline">Loading results.</p>
+  <p class="muted" id="window"></p>
+  <p>The trust point of a flight is the earliest prediction from which every later interval is no wider than a window W and contains the true touchdown. Trust lead is touchdown time minus trust point. A flight that is never trusted gets a lead of zero.</p>
+
+  <h2>Hypotheses</h2>
+  <div id="hyp"></div>
+
+  <h2>Trust lead</h2>
+  <div class="table-wrap" id="trust"></div>
+  <img src="figures/trust_lead.png" alt="Trust lead per flight for each window">
+
+  <h2>Coverage and width by distance band</h2>
+  <div class="table-wrap" id="coverage"></div>
+  <img src="figures/coverage.png" alt="Coverage by distance band">
+  <img src="figures/width.png" alt="Mean interval width by distance">
+
+  <h2>Point error at fixed distances</h2>
+  <div class="table-wrap" id="accuracy"></div>
+  <img src="figures/error_by_horizon.png" alt="Point error at fixed distances">
+
+  <h2>Ablations</h2>
+  <div class="table-wrap" id="ablations"></div>
+
+  <h2>What drives interval width</h2>
+  <img src="figures/shap_width.png" alt="Features that drive interval width">
+
+  <h2>Further statistics</h2>
+  <p class="muted">Exploratory. They explain the hypothesis results and do not change any verdict.</p>
+  <div id="further"></div>
+  <img src="figures/paired_lead.png" alt="Trust lead per test flight, model against baseline B">
+  <h3>Interval score, model minus baseline B</h3>
+  <p class="muted">Width plus a penalty for each miss. Lower is better; negative differences favour the model.</p>
+  <div class="table-wrap" id="scores"></div>
+  <img src="figures/interval_score.png" alt="Interval score by distance band">
+  <h3>Paired point error at fixed distances</h3>
+  <div class="table-wrap" id="pairederr"></div>
+  <h3>Quantile reliability</h3>
+  <div class="table-wrap" id="reliability"></div>
+  <img src="figures/reliability.png" alt="Quantile reliability">
+  <h3>Calibration drift across the evening</h3>
+  <div class="table-wrap" id="drift"></div>
+  <img src="figures/coverage_drift.png" alt="Calibrated coverage per flight over the evening">
+
+  <h2>Data</h2>
+  <img src="figures/data_overview.png" alt="Arrivals per hour by split">
+  <img src="figures/tracks.png" alt="Arrival tracks by split">
+
+  <h2>Example flights</h2>
+  <div id="examples"></div>
+</main>
+<footer id="footer" class="site"></footer>
+<script src="site.js"></script>
+<script>
+(function () {
+  const NAMES = { model_calibrated: "Model, calibrated", model_uncalibrated: "Model, uncalibrated",
+    baseline_b_calibrated: "Baseline B, calibrated", model: "Model (P50)", baseline_a: "Baseline A",
+    baseline_b: "Baseline B (P50)" };
+  const f1 = (x) => (x === null || x === undefined ? "n/a" : x.toFixed(1));
+  const pct = (x) => (x === null || x === undefined ? "n/a" : (100 * x).toFixed(1));
+  const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+
+  function table(el, head, rows) {
+    const h = "<tr>" + head.map((x) => "<th>" + esc(x) + "</th>").join("") + "</tr>";
+    const b = rows.map((r) => "<tr>" + r.map((x, i) => "<td" + (i > 0 ? ' class="num"' : "") + ">" + esc(x) + "</td>").join("") + "</tr>").join("");
+    document.getElementById(el).innerHTML = "<table>" + h + b + "</table>";
+  }
+
+  fetch("data/results.json").then((r) => r.json()).then((r) => {
+    window.glidepathLabel(r.synthetic);
+    document.getElementById("headline").textContent = r.headline;
+    const d = r.data_window, c = r.counts;
+    document.getElementById("window").textContent = (r.synthetic ? "SYNTHETIC TEST data. " : "Pilot data window: ") +
+      d.first_local + " to " + d.last_local + " (" + f1(d.hours) + " hours). " + c.arrivals_kept +
+      " arrivals kept, " + c.test_flights + " test flights. Split: " + r.splits.scheme.replace("_", " ") + ".";
+
+    const hyp = document.getElementById("hyp");
+    for (const [k, h] of Object.entries(r.hypotheses)) {
+      const p = document.createElement("p");
+      const cls = h.status.replace(" ", "-");
+      p.innerHTML = '<span class="status ' + cls + '">' + esc(k + ": " + h.status) + "</span>. " +
+        esc(h.summary.replace(/^H\d [a-z ]+\.\s*/, ""));
+      hyp.appendChild(p);
+    }
+    table("trust", ["Method", "W (min)", "Flights", "Median lead (min)", "Quartiles (min)", "Never trusted (%)"],
+      r.trust.map((t) => [NAMES[t.method], t.window_min, t.n_flights, f1(t.median_min),
+        f1(t.q1_min) + " to " + f1(t.q3_min), pct(t.share_never_trusted)]));
+    table("coverage", ["Method", "Band", "Rows", "Coverage (%)", "95% CI", "Mean width (min)"],
+      r.coverage.map((x) => [NAMES[x.method], x.band, x.n_rows, pct(x.coverage),
+        pct(x.coverage_lo) + " to " + pct(x.coverage_hi), f1(x.width_min)]));
+    table("accuracy", ["Distance", "Method", "Flights", "MAE (s)", "RMSE (s)", "P90 abs error (s)"],
+      r.point_accuracy.map((a) => [a.horizon_nm + " nm", NAMES[a.method], a.n_flights,
+        a.mae_s === null ? "n/a" : a.mae_s.toFixed(0), a.rmse_s === null ? "n/a" : a.rmse_s.toFixed(0),
+        a.p90_abs_s === null ? "n/a" : a.p90_abs_s.toFixed(0)]));
+    table("ablations", ["Variant", "Coverage (%)", "Mean width (min)", "Median lead (min)", "Never trusted (%)"],
+      r.ablations.map((a) => [a.ablation, pct(a.coverage), f1(a.width_min), f1(a.median_lead_min),
+        pct(a.share_never_trusted)]));
+    const dg = r.diagnostics;
+    if (dg) {
+      const ci = (x, lo, hi, f) => (f || f1)(x) + " (" + (f || f1)(lo) + " to " + (f || f1)(hi) + ")";
+      const f2 = (x) => (x === null || x === undefined ? "n/a" : x.toFixed(2));
+      const s = dg.superiority_w5;
+      const all = dg.scores.find((x) => x.band === "all");
+      const dr = Object.fromEntries(dg.drift.map((x) => [x.split, x]));
+      document.getElementById("further").innerHTML =
+        "<p>At W = " + s.window_min + " minutes the model gave a longer trust lead than baseline B on " +
+        pct(s.share_model_longer) + " percent of test flights (mean gain " +
+        ci(s.mean_diff_min, s.mean_ci_lo, s.mean_ci_hi) + " minutes).</p>" +
+        "<p>Interval score over all test rows: model " + f1(all.is_model) + " minutes, baseline B " +
+        f1(all.is_base) + " minutes.</p>" +
+        "<p>Calibrated coverage was " + pct(dr.calibration.coverage) + " percent on the calibration flights and " +
+        pct(dr.test.coverage) + " percent on the later test flights. This drift is the main reason H1 fails.</p>";
+      table("scores", ["Band", "Flights", "Model (min)", "Baseline B (min)", "Difference (95% CI)", "Pinball difference (95% CI)"],
+        dg.scores.map((x) => [x.band, x.n_flights, f1(x.is_model), f1(x.is_base),
+          ci(x.is_diff, x.is_diff_lo, x.is_diff_hi), ci(x.pb_diff, x.pb_diff_lo, x.pb_diff_hi, f2)]));
+      const VS = { baseline_a: "Baseline A", baseline_b: "Baseline B (P50)" };
+      table("pairederr", ["Distance", "Versus", "Flights", "Model minus baseline, mean abs error (min)", "Model closer (%)"],
+        dg.paired_point_error.map((x) => [x.horizon_nm + " nm", VS[x.versus], x.n_flights,
+          ci(x.mean_abs_error_diff_min, x.ci_lo, x.ci_hi), pct(x.share_model_better)]));
+      table("reliability", ["Method", "Nominal quantile", "Share below (%)", "95% CI"],
+        dg.reliability.map((x) => [NAMES[x.method], x.nominal, pct(x.observed), pct(x.ci_lo) + " to " + pct(x.ci_hi)]));
+      const SN = { train: "Train", calibration: "Calibration", test: "Test" };
+      table("drift", ["Split", "Flights", "Coverage (%)", "95% CI", "Mean width (min)"],
+        dg.drift.map((x) => [SN[x.split], x.n_flights, pct(x.coverage), pct(x.coverage_lo) + " to " + pct(x.coverage_hi), f1(x.width_min)]));
+    }
+    const ex = document.getElementById("examples");
+    for (const e of r.examples) {
+      const img = document.createElement("img");
+      img.src = e.figure; img.alt = "Example flight, " + e.role + " lead";
+      ex.appendChild(img);
+    }
+  }).catch((e) => { document.getElementById("headline").textContent = "Could not load results."; console.warn(e); });
+})();
+</script>
+</body>
+</html>

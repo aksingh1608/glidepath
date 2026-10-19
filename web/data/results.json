@@ -1,0 +1,1103 @@
+{
+ "label": "PILOT",
+ "synthetic": false,
+ "generated_utc": "2026-10-19 01:59:18 UTC",
+ "headline": "In this pilot, a typical Frankfurt arrival had a landing time we could trust within 5 minutes, 7.2 minutes before touchdown (24 test flights).",
+ "config": {
+  "alpha": 0.2,
+  "coverage_target_pct": 80.0,
+  "windows_min": [
+   2,
+   5,
+   10
+  ],
+  "main_window_min": 5,
+  "n_boot": 10000,
+  "seed": 7,
+  "bands": [
+   "0 to 20 nm",
+   "20 to 50 nm",
+   "50 to 100 nm",
+   "over 100 nm"
+  ],
+  "horizons_nm": [
+   100,
+   50,
+   20
+  ],
+  "h1_min_test_rows": 50,
+  "h1_tolerance_points": 5.0,
+  "h4_min_holding_flights": 5,
+  "max_distance_nm": 150.0,
+  "features": [
+   "distance_nm",
+   "bearing_sin",
+   "bearing_cos",
+   "alt_m",
+   "gs_kt",
+   "vrate_ms",
+   "course_offset_deg",
+   "speed_toward_kt",
+   "d_alt_60",
+   "d_alt_120",
+   "d_gs_60",
+   "d_gs_120",
+   "turn_5min_deg",
+   "holding",
+   "direction_code",
+   "traffic_20",
+   "traffic_50",
+   "traffic_100",
+   "distance_rank",
+   "landings_30min",
+   "local_hour",
+   "category"
+  ],
+  "method": {
+   "flight_gap_min": 15.0,
+   "min_points": 20,
+   "arrival_start_nm": 30.0,
+   "ground_nm": 5.0,
+   "midpoint_max_gap_s": 60.0,
+   "extrap_cap_s": 120.0,
+   "inner_gap_nm": 20.0,
+   "inner_max_gap_s": 120.0,
+   "max_y_hours": 3.0,
+   "quantiles": [
+    0.1,
+    0.5,
+    0.9
+   ],
+   "baseline_b_bin_nm": 5.0,
+   "baseline_b_min_rows": 30,
+   "cqr_min_band_rows": 20,
+   "holding_turn_deg": 300.0,
+   "turn_window_s": 300.0,
+   "train_frac": 0.6,
+   "cal_frac": 0.2,
+   "min_split_days": 3,
+   "min_arrivals_per_day": 150,
+   "replay_step_s": 30
+  }
+ },
+ "data_window": {
+  "first_utc": "2026-10-18 15:45:52 UTC",
+  "last_utc": "2026-10-19 01:37:12 UTC",
+  "first_local": "2026-10-18 17:45:52 CEST",
+  "last_local": "2026-10-19 03:37:12 CEST",
+  "hours": 9.855555555555556,
+  "raw_rows": 431659,
+  "raw_files": 11,
+  "aircraft": 1944,
+  "source": "data/raw/live"
+ },
+ "counts": {
+  "flights_total": 2852,
+  "arrivals_kept": 120,
+  "arrivals_with_rows": 120,
+  "rows": 19574,
+  "rows_by_split": {
+   "train": 12020,
+   "calibration": 3908,
+   "test": 3646
+  },
+  "flights_by_split": {
+   "train": 72,
+   "calibration": 24,
+   "test": 24
+  },
+  "test_flights": 24,
+  "directions": {
+   "07": 102,
+   "unk": 16,
+   "25": 2
+  },
+  "go_arounds": 5
+ },
+ "drop_reasons": {
+  "not_arrival_no_touchdown": 2408,
+  "gap_over_120s_inside_20nm": 64,
+  "too_few_points": 241,
+  "not_arrival_never_airborne_beyond_30nm": 19
+ },
+ "label_methods": {
+  "ground_extrapolated": 76,
+  "ground_midpoint": 33,
+  "fallback_extrapolated": 11
+ },
+ "splits": {
+  "scheme": "time_block",
+  "train_frac": 0.6,
+  "calibration_frac": 0.2,
+  "test_frac": 0.2,
+  "arrivals_per_local_day": {
+   "2026-10-18": 120
+  },
+  "train": {
+   "flights": 72,
+   "first_touchdown_utc": "2026-10-18 16:03:55 UTC",
+   "last_touchdown_utc": "2026-10-18 18:29:21 UTC"
+  },
+  "calibration": {
+   "flights": 24,
+   "first_touchdown_utc": "2026-10-18 18:32:20 UTC",
+   "last_touchdown_utc": "2026-10-18 19:42:05 UTC"
+  },
+  "test": {
+   "flights": 24,
+   "first_touchdown_utc": "2026-10-18 19:42:55 UTC",
+   "last_touchdown_utc": "2026-10-18 21:56:04 UTC"
+  }
+ },
+ "models": {
+  "best_iteration": {
+   "0.1": 205,
+   "0.5": 2153,
+   "0.9": 310
+  },
+  "cqr_model": {
+   "global_q_s": 59.896702573568746,
+   "band_q_s": {
+    "0": 18.597228875220367,
+    "1": 67.04562175536239,
+    "2": 98.75507551653664,
+    "3": 90.85728338394892
+   },
+   "band_calibration_rows": {
+    "0": 1492,
+    "1": 900,
+    "2": 1044,
+    "3": 472
+   }
+  },
+  "cqr_baseline_b": {
+   "global_q_s": -5.0,
+   "band_q_s": {
+    "0": -2.0,
+    "1": -7.5,
+    "2": -8.0,
+    "3": -6.099999999999909
+   },
+   "band_calibration_rows": {
+    "0": 1492,
+    "1": 900,
+    "2": 1044,
+    "3": 472
+   }
+  },
+  "baseline_b_source_share_test": {
+   "bin_direction": 0.9967087218869994,
+   "baseline_a": 0.0032912781130005485
+  }
+ },
+ "point_accuracy": [
+  {
+   "horizon_nm": 100,
+   "method": "model",
+   "n_flights": 24,
+   "mae_s": 113.47537223360264,
+   "rmse_s": 147.74974503143414,
+   "p90_abs_s": 201.99799036636279
+  },
+  {
+   "horizon_nm": 100,
+   "method": "baseline_a",
+   "n_flights": 24,
+   "mae_s": 562.2899866131701,
+   "rmse_s": 581.0042152029569,
+   "p90_abs_s": 816.1977810097831
+  },
+  {
+   "horizon_nm": 100,
+   "method": "baseline_b",
+   "n_flights": 24,
+   "mae_s": 187.95833333333334,
+   "rmse_s": 214.9775666590974,
+   "p90_abs_s": 326.5
+  },
+  {
+   "horizon_nm": 50,
+   "method": "model",
+   "n_flights": 24,
+   "mae_s": 97.67238065338273,
+   "rmse_s": 132.3888499073164,
+   "p90_abs_s": 252.27863074420642
+  },
+  {
+   "horizon_nm": 50,
+   "method": "baseline_a",
+   "n_flights": 24,
+   "mae_s": 449.96150732500183,
+   "rmse_s": 475.12362641490506,
+   "p90_abs_s": 715.8093039850014
+  },
+  {
+   "horizon_nm": 50,
+   "method": "baseline_b",
+   "n_flights": 24,
+   "mae_s": 164.25,
+   "rmse_s": 178.6042529355521,
+   "p90_abs_s": 258.7
+  },
+  {
+   "horizon_nm": 20,
+   "method": "model",
+   "n_flights": 24,
+   "mae_s": 69.18549537661418,
+   "rmse_s": 95.44660709009821,
+   "p90_abs_s": 155.80310505244512
+  },
+  {
+   "horizon_nm": 20,
+   "method": "baseline_a",
+   "n_flights": 24,
+   "mae_s": 293.6160355641409,
+   "rmse_s": 364.551117115459,
+   "p90_abs_s": 660.4200508077907
+  },
+  {
+   "horizon_nm": 20,
+   "method": "baseline_b",
+   "n_flights": 24,
+   "mae_s": 146.29166666666666,
+   "rmse_s": 224.7702067297473,
+   "p90_abs_s": 463.0
+  }
+ ],
+ "coverage": [
+  {
+   "method": "model_uncalibrated",
+   "band": "0 to 20 nm",
+   "n_rows": 1251,
+   "n_flights": 24,
+   "coverage": 0.5523581135091926,
+   "coverage_lo": 0.45600448896216417,
+   "coverage_hi": 0.6484643049709657,
+   "width_min": 1.1840194630495502,
+   "width_lo": 1.0672486050470316,
+   "width_hi": 1.3030076770453793
+  },
+  {
+   "method": "model_uncalibrated",
+   "band": "20 to 50 nm",
+   "n_rows": 955,
+   "n_flights": 24,
+   "coverage": 0.2837696335078534,
+   "coverage_lo": 0.16203777124099417,
+   "coverage_hi": 0.4164025032475511,
+   "width_min": 1.219918335056783,
+   "width_lo": 1.0706847516695355,
+   "width_hi": 1.3687319601208072
+  },
+  {
+   "method": "model_uncalibrated",
+   "band": "50 to 100 nm",
+   "n_rows": 1051,
+   "n_flights": 24,
+   "coverage": 0.25118934348239774,
+   "coverage_lo": 0.13789791068866572,
+   "coverage_hi": 0.3744312382487241,
+   "width_min": 1.359523933825566,
+   "width_lo": 1.1570672992935993,
+   "width_hi": 1.5793835921606547
+  },
+  {
+   "method": "model_uncalibrated",
+   "band": "over 100 nm",
+   "n_rows": 389,
+   "n_flights": 24,
+   "coverage": 0.390745501285347,
+   "coverage_lo": 0.23183343406109141,
+   "coverage_hi": 0.5753456965624192,
+   "width_min": 2.281774709310233,
+   "width_lo": 1.8133185694853884,
+   "width_hi": 2.8935587307579103
+  },
+  {
+   "method": "model_uncalibrated",
+   "band": "all",
+   "n_rows": 3646,
+   "n_flights": 24,
+   "coverage": 0.37794843664289635,
+   "coverage_lo": 0.29642970256906925,
+   "coverage_hi": 0.46635499695342275,
+   "width_min": 1.361135593699003,
+   "width_lo": 1.2184342078174422,
+   "width_hi": 1.5144314044582927
+  },
+  {
+   "method": "model_calibrated",
+   "band": "0 to 20 nm",
+   "n_rows": 1251,
+   "n_flights": 24,
+   "coverage": 0.7490007993605116,
+   "coverage_lo": 0.6535291435430567,
+   "coverage_hi": 0.8446459887662022,
+   "width_min": 1.8039270922235622,
+   "width_lo": 1.6871562342210438,
+   "width_hi": 1.9229153062193913
+  },
+  {
+   "method": "model_calibrated",
+   "band": "20 to 50 nm",
+   "n_rows": 955,
+   "n_flights": 24,
+   "coverage": 0.669109947643979,
+   "coverage_lo": 0.5233160621761658,
+   "coverage_hi": 0.8139577145065082,
+   "width_min": 3.4547723935688626,
+   "width_lo": 3.3055388101816154,
+   "width_hi": 3.6035860186328863
+  },
+  {
+   "method": "model_calibrated",
+   "band": "50 to 100 nm",
+   "n_rows": 1051,
+   "n_flights": 24,
+   "coverage": 0.7021883920076119,
+   "coverage_lo": 0.5442503049969788,
+   "coverage_hi": 0.8472679503299099,
+   "width_min": 4.651359784376787,
+   "width_lo": 4.448903149844821,
+   "width_hi": 4.871219442711876
+  },
+  {
+   "method": "model_calibrated",
+   "band": "over 100 nm",
+   "n_rows": 389,
+   "n_flights": 24,
+   "coverage": 0.7172236503856041,
+   "coverage_lo": 0.5169204892966361,
+   "coverage_hi": 0.8937508095854922,
+   "width_min": 5.31035082210853,
+   "width_lo": 4.841894682283686,
+   "width_hi": 5.922134843556209
+  },
+  {
+   "method": "model_calibrated",
+   "band": "all",
+   "n_rows": 3646,
+   "n_flights": 24,
+   "coverage": 0.7111903455842019,
+   "coverage_lo": 0.6012840335355096,
+   "coverage_hi": 0.8139952046967894,
+   "width_min": 3.4312468544734402,
+   "width_lo": 3.26883292761152,
+   "width_hi": 3.596102081668857
+  },
+  {
+   "method": "baseline_b_calibrated",
+   "band": "0 to 20 nm",
+   "n_rows": 1251,
+   "n_flights": 24,
+   "coverage": 0.9072741806554756,
+   "coverage_lo": 0.8594202898550725,
+   "coverage_hi": 0.9579234307099412,
+   "width_min": 9.33279776179057,
+   "width_lo": 9.26485782843678,
+   "width_hi": 9.3965542525926
+  },
+  {
+   "method": "baseline_b_calibrated",
+   "band": "20 to 50 nm",
+   "n_rows": 955,
+   "n_flights": 24,
+   "coverage": 0.9151832460732985,
+   "coverage_lo": 0.861396934489718,
+   "coverage_hi": 0.9589597483919251,
+   "width_min": 8.405115183246075,
+   "width_lo": 8.386992708746952,
+   "width_hi": 8.424675086429655
+  },
+  {
+   "method": "baseline_b_calibrated",
+   "band": "50 to 100 nm",
+   "n_rows": 1051,
+   "n_flights": 24,
+   "coverage": 0.6412940057088488,
+   "coverage_lo": 0.46853823814133594,
+   "coverage_hi": 0.8027501935094108,
+   "width_min": 7.1494370440849995,
+   "width_lo": 7.146546305732668,
+   "width_hi": 7.152069259389122
+  },
+  {
+   "method": "baseline_b_calibrated",
+   "band": "over 100 nm",
+   "n_rows": 389,
+   "n_flights": 24,
+   "coverage": 0.5372750642673522,
+   "coverage_lo": 0.3399503722084367,
+   "coverage_hi": 0.7278069463537438,
+   "width_min": 7.137039992058953,
+   "width_lo": 7.059625882064209,
+   "width_hi": 7.20665705514878
+  },
+  {
+   "method": "baseline_b_calibrated",
+   "band": "all",
+   "n_rows": 3646,
+   "n_flights": 24,
+   "coverage": 0.7931980252331322,
+   "coverage_lo": 0.7150102982999834,
+   "coverage_hi": 0.867111795111585,
+   "width_min": 8.226160693978132,
+   "width_lo": 8.159504794570791,
+   "width_hi": 8.292499951204407
+  }
+ ],
+ "trust": [
+  {
+   "method": "model_calibrated",
+   "window_min": 2,
+   "n_flights": 24,
+   "median_min": 3.0041666666666664,
+   "q1_min": 2.229166666666667,
+   "q3_min": 3.8375,
+   "share_never_trusted": 0.125
+  },
+  {
+   "method": "model_calibrated",
+   "window_min": 5,
+   "n_flights": 24,
+   "median_min": 7.15,
+   "q1_min": 4.291666666666666,
+   "q3_min": 8.435416666666667,
+   "share_never_trusted": 0.0
+  },
+  {
+   "method": "model_calibrated",
+   "window_min": 10,
+   "n_flights": 24,
+   "median_min": 7.15,
+   "q1_min": 4.291666666666666,
+   "q3_min": 8.435416666666667,
+   "share_never_trusted": 0.0
+  },
+  {
+   "method": "model_uncalibrated",
+   "window_min": 2,
+   "n_flights": 24,
+   "median_min": 1.2875,
+   "q1_min": 0.37083333333333335,
+   "q3_min": 2.0749999999999997,
+   "share_never_trusted": 0.16666666666666666
+  },
+  {
+   "method": "model_uncalibrated",
+   "window_min": 5,
+   "n_flights": 24,
+   "median_min": 1.2875,
+   "q1_min": 0.41250000000000003,
+   "q3_min": 2.0749999999999997,
+   "share_never_trusted": 0.125
+  },
+  {
+   "method": "model_uncalibrated",
+   "window_min": 10,
+   "n_flights": 24,
+   "median_min": 1.2875,
+   "q1_min": 0.41250000000000003,
+   "q3_min": 2.0749999999999997,
+   "share_never_trusted": 0.125
+  },
+  {
+   "method": "baseline_b_calibrated",
+   "window_min": 2,
+   "n_flights": 24,
+   "median_min": 0.0,
+   "q1_min": 0.0,
+   "q3_min": 0.0,
+   "share_never_trusted": 1.0
+  },
+  {
+   "method": "baseline_b_calibrated",
+   "window_min": 5,
+   "n_flights": 24,
+   "median_min": 0.0,
+   "q1_min": 0.0,
+   "q3_min": 0.0,
+   "share_never_trusted": 1.0
+  },
+  {
+   "method": "baseline_b_calibrated",
+   "window_min": 10,
+   "n_flights": 24,
+   "median_min": 1.4416666666666667,
+   "q1_min": 0.0,
+   "q3_min": 1.7916666666666667,
+   "share_never_trusted": 0.4583333333333333
+  }
+ ],
+ "paired_w5": {
+  "window_min": 5,
+  "n_flights": 24,
+  "median_diff_min": 7.15,
+  "ci_lo": 4.8,
+  "ci_hi": 7.758333333333334,
+  "wilcoxon_p": 1.1920928955078125e-07,
+  "n_nonzero": 24,
+  "note": "",
+  "mean_diff_min": 7.92638888888889
+ },
+ "splits_w5": {
+  "traffic_tercile": [
+   {
+    "group": "quiet",
+    "n_flights": 8,
+    "median_min": 5.183333333333334,
+    "share_never_trusted": 0.0
+   },
+   {
+    "group": "middle",
+    "n_flights": 8,
+    "median_min": 7.4625,
+    "share_never_trusted": 0.0
+   },
+   {
+    "group": "busy",
+    "n_flights": 8,
+    "median_min": 6.854166666666666,
+    "share_never_trusted": 0.0
+   }
+  ],
+  "direction": [
+   {
+    "group": "07",
+    "n_flights": 22,
+    "median_min": 7.15,
+    "share_never_trusted": 0.0
+   },
+   {
+    "group": "unk",
+    "n_flights": 2,
+    "median_min": 5.820833333333333,
+    "share_never_trusted": 0.0
+   }
+  ],
+  "holding": [
+   {
+    "group": "false",
+    "n_flights": 23,
+    "median_min": 7.133333333333334,
+    "share_never_trusted": 0.0
+   },
+   {
+    "group": "true",
+    "n_flights": 1,
+    "median_min": 7.675,
+    "share_never_trusted": 0.0
+   }
+  ]
+ },
+ "ablations": [
+  {
+   "ablation": "full model",
+   "coverage": 0.7111903455842019,
+   "coverage_lo": 0.6012840335355096,
+   "coverage_hi": 0.8139952046967894,
+   "width_min": 3.4312468544734402,
+   "median_lead_min": 7.15,
+   "median_lead_lo": 4.8,
+   "median_lead_hi": 7.758333333333334,
+   "share_never_trusted": 0.0
+  },
+  {
+   "ablation": "no traffic features",
+   "coverage": 0.738069116840373,
+   "coverage_lo": 0.6201633646388683,
+   "coverage_hi": 0.8475046447038324,
+   "width_min": 3.6753510366616893,
+   "median_lead_min": 7.645833333333333,
+   "median_lead_lo": 6.316458333333333,
+   "median_lead_hi": 8.666666666666666,
+   "share_never_trusted": 0.0
+  },
+  {
+   "ablation": "no direction feature",
+   "coverage": 0.714207350521119,
+   "coverage_lo": 0.6033429042497112,
+   "coverage_hi": 0.8199543690344726,
+   "width_min": 3.4615056799059207,
+   "median_lead_min": 7.7,
+   "median_lead_lo": 5.75,
+   "median_lead_hi": 10.041666666666666,
+   "share_never_trusted": 0.0
+  },
+  {
+   "ablation": "no conformal step",
+   "coverage": 0.37794843664289635,
+   "coverage_lo": 0.29642970256906925,
+   "coverage_hi": 0.46635499695342275,
+   "width_min": 1.361135593699003,
+   "median_lead_min": 1.2875,
+   "median_lead_lo": 0.5166666666666667,
+   "median_lead_hi": 1.9,
+   "share_never_trusted": 0.125
+  },
+  {
+   "ablation": "one global conformal correction",
+   "coverage": 0.6930883159626988,
+   "coverage_lo": 0.5822854275313264,
+   "coverage_hi": 0.8012852127341893,
+   "width_min": 3.357692346151295,
+   "median_lead_min": 9.3375,
+   "median_lead_lo": 7.458333333333333,
+   "median_lead_hi": 16.933333333333334,
+   "share_never_trusted": 0.041666666666666664
+  }
+ ],
+ "hypotheses": {
+  "H1": {
+   "status": "not supported",
+   "calibrated_all_within": false,
+   "uncalibrated_missing_bands": [
+    "0 to 20 nm",
+    "20 to 50 nm",
+    "50 to 100 nm",
+    "over 100 nm"
+   ],
+   "eligible_bands": [
+    "0 to 20 nm",
+    "20 to 50 nm",
+    "50 to 100 nm",
+    "over 100 nm"
+   ],
+   "target": 0.8,
+   "tolerance": 0.05,
+   "min_test_rows": 50,
+   "calibrated": {
+    "0 to 20 nm": 0.7490007993605116,
+    "20 to 50 nm": 0.669109947643979,
+    "50 to 100 nm": 0.7021883920076119,
+    "over 100 nm": 0.7172236503856041
+   },
+   "uncalibrated": {
+    "0 to 20 nm": 0.5523581135091926,
+    "20 to 50 nm": 0.2837696335078534,
+    "50 to 100 nm": 0.25118934348239774,
+    "over 100 nm": 0.390745501285347
+   },
+   "summary": "H1 not supported. Calibrated coverage (%) by band: 0 to 20 nm 74.9, 20 to 50 nm 66.9, 50 to 100 nm 70.2, over 100 nm 71.7. Uncalibrated: 0 to 20 nm 55.2, 20 to 50 nm 28.4, 50 to 100 nm 25.1, over 100 nm 39.1. Target 80 \u00b1 5 points, bands with at least 50 test rows."
+  },
+  "H2": {
+   "status": "supported",
+   "window_min": 5,
+   "n_flights": 24,
+   "median_diff_min": 7.15,
+   "ci_lo": 4.8,
+   "ci_hi": 7.758333333333334,
+   "wilcoxon_p": 1.1920928955078125e-07,
+   "n_nonzero": 24,
+   "note": "",
+   "mean_diff_min": 7.92638888888889,
+   "summary": "H2 supported. Median paired difference in trust lead at W = 5 min, model minus baseline B: 7.2 min, 95% bootstrap interval 4.8 to 7.8 min, 24 flights, Wilcoxon p = 1.19e-07."
+  },
+  "H3": {
+   "status": "not supported",
+   "median_diff_quiet_minus_busy_min": -1.6708333333333325,
+   "ci_lo": -14.808333333333332,
+   "ci_hi": 2.625,
+   "n_quiet": 8,
+   "n_busy": 8,
+   "median_quiet_min": 5.183333333333334,
+   "median_busy_min": 6.854166666666666,
+   "summary": "H3 not supported. Median trust lead 5.2 min in the quietest traffic tercile (8 flights) and 6.9 min in the busiest (8 flights). Difference quiet minus busy -1.7 min, 95% interval -14.8 to 2.6."
+  },
+  "H4": {
+   "status": "unclear",
+   "reason": "fewer holding flights than the minimum",
+   "n_holding": 1,
+   "n_no_holding": 23,
+   "min_holding_flights": 5,
+   "median_holding_min": 7.675,
+   "median_no_holding_min": 7.133333333333334,
+   "summary": "H4 unclear. 1 test flight with holding, 23 without (minimum for a test: 5)."
+  }
+ },
+ "shap_width": [
+  {
+   "feature": "alt_m",
+   "mean_abs_width_contribution_min": 1.1351584997811133
+  },
+  {
+   "feature": "distance_nm",
+   "mean_abs_width_contribution_min": 0.6831071091824181
+  },
+  {
+   "feature": "bearing_sin",
+   "mean_abs_width_contribution_min": 0.581176952779195
+  },
+  {
+   "feature": "distance_rank",
+   "mean_abs_width_contribution_min": 0.3213827017165484
+  },
+  {
+   "feature": "gs_kt",
+   "mean_abs_width_contribution_min": 0.30628334848332817
+  },
+  {
+   "feature": "local_hour",
+   "mean_abs_width_contribution_min": 0.26200394894783735
+  },
+  {
+   "feature": "bearing_cos",
+   "mean_abs_width_contribution_min": 0.18781510825011602
+  },
+  {
+   "feature": "speed_toward_kt",
+   "mean_abs_width_contribution_min": 0.15550347649737525
+  },
+  {
+   "feature": "d_alt_120",
+   "mean_abs_width_contribution_min": 0.1297729302204581
+  },
+  {
+   "feature": "turn_5min_deg",
+   "mean_abs_width_contribution_min": 0.11741764901996946
+  }
+ ],
+ "examples": [
+  {
+   "role": "typical",
+   "flight_id": "3c49b1_1792353404",
+   "callsign": "TUI31E",
+   "lead_min": 7.166666666666667,
+   "never_trusted": false,
+   "figure": "figures/example_typical.png"
+  },
+  {
+   "role": "shortest",
+   "flight_id": "3c6917_1792351236",
+   "callsign": "CFG3HE",
+   "lead_min": 1.6666666666666667,
+   "never_trusted": false,
+   "figure": "figures/example_shortest.png"
+  },
+  {
+   "role": "holding",
+   "flight_id": "3c6488_1792352509",
+   "callsign": "OCN3ME",
+   "lead_min": 7.675,
+   "never_trusted": false,
+   "figure": "figures/example_holding.png"
+  }
+ ],
+ "diagnostics": {
+  "scores": [
+   {
+    "band": "0 to 20 nm",
+    "n_rows": 1251,
+    "n_flights": 24,
+    "is_model": 3.5580751092158622,
+    "is_model_lo": 2.4254257500879435,
+    "is_model_hi": 4.966273787507505,
+    "is_base": 9.946160405009328,
+    "is_base_lo": 9.462316045533747,
+    "is_base_hi": 10.475434155002059,
+    "is_diff": -6.388085295793466,
+    "is_diff_lo": -7.614603920112422,
+    "is_diff_hi": -4.874851921732924,
+    "pb_model": 0.254002711345945,
+    "pb_model_lo": 0.17996604175202643,
+    "pb_model_hi": 0.34106939780173096,
+    "pb_base": 0.6172907451816324,
+    "pb_base_lo": 0.5067646522102355,
+    "pb_base_hi": 0.7255416135511342,
+    "pb_diff": -0.3632880338356875,
+    "pb_diff_lo": -0.4922251982283175,
+    "pb_diff_hi": -0.22117005409632354
+   },
+   {
+    "band": "20 to 50 nm",
+    "n_rows": 955,
+    "n_flights": 24,
+    "is_model": 7.211435174048879,
+    "is_model_lo": 4.639399264262047,
+    "is_model_hi": 10.137855864275963,
+    "is_base": 8.688692844677139,
+    "is_base_lo": 8.52313957093254,
+    "is_base_hi": 8.893489243083762,
+    "is_diff": -1.477257670628259,
+    "is_diff_lo": -4.046252807419965,
+    "is_diff_hi": 1.4467344923213028,
+    "pb_model": 0.5842860867579086,
+    "pb_model_lo": 0.38443698914708174,
+    "pb_model_hi": 0.7967217127559576,
+    "pb_base": 0.7086642524723676,
+    "pb_base_lo": 0.6522372881241487,
+    "pb_base_hi": 0.768507143069375,
+    "pb_diff": -0.1243781657144591,
+    "pb_diff_lo": -0.331472703307474,
+    "pb_diff_hi": 0.09385709364276248
+   },
+   {
+    "band": "50 to 100 nm",
+    "n_rows": 1051,
+    "n_flights": 24,
+    "is_model": 8.460112932604357,
+    "is_model_lo": 5.317912319103622,
+    "is_model_hi": 13.18554013010246,
+    "is_base": 11.27755312400888,
+    "is_base_lo": 8.920867289381148,
+    "is_base_hi": 14.080334974567352,
+    "is_diff": -2.817440191404525,
+    "is_diff_lo": -7.0644296027551325,
+    "is_diff_hi": 2.1463171452858427,
+    "pb_model": 0.7541437112599142,
+    "pb_model_lo": 0.478718119196466,
+    "pb_model_hi": 1.0848345119948997,
+    "pb_base": 0.8806248017760864,
+    "pb_base_lo": 0.729901757898308,
+    "pb_base_hi": 1.0552099075068144,
+    "pb_diff": -0.12648109051617204,
+    "pb_diff_lo": -0.416501222562112,
+    "pb_diff_hi": 0.20262749550577655
+   },
+   {
+    "band": "over 100 nm",
+    "n_rows": 389,
+    "n_flights": 24,
+    "is_model": 11.77804767033426,
+    "is_model_lo": 5.667486339069467,
+    "is_model_hi": 22.348413080326996,
+    "is_base": 14.663037498996678,
+    "is_base_lo": 10.483602233732336,
+    "is_base_hi": 19.33376204100368,
+    "is_diff": -2.8849898286624165,
+    "is_diff_lo": -10.707687947707997,
+    "is_diff_hi": 5.933237138693577,
+    "pb_model": 0.8841765665327486,
+    "pb_model_lo": 0.43987665585109903,
+    "pb_model_hi": 1.5222940431325906,
+    "pb_base": 1.0763246007647609,
+    "pb_base_lo": 0.8207176969228084,
+    "pb_base_hi": 1.3593824467387698,
+    "pb_diff": -0.19214803423201235,
+    "pb_diff_lo": -0.6836137874299629,
+    "pb_diff_hi": 0.3184538371024367
+   },
+   {
+    "band": "all",
+    "n_rows": 3646,
+    "n_flights": 24,
+    "is_model": 6.805077287101735,
+    "is_model_lo": 4.4032809964065835,
+    "is_model_hi": 10.078806209624588,
+    "is_base": 10.503833860059348,
+    "is_base_lo": 9.4252459215526,
+    "is_base_hi": 11.766943858699726,
+    "is_diff": -3.6987565729576106,
+    "is_diff_lo": -6.188146159215948,
+    "is_diff_hi": -0.6415217294268487,
+    "pb_model": 0.5519200026502987,
+    "pb_model_lo": 0.3688677793042989,
+    "pb_model_hi": 0.7740499251839827,
+    "pb_base": 0.7661086175802228,
+    "pb_base_lo": 0.6867367900545758,
+    "pb_base_hi": 0.8487593178604835,
+    "pb_diff": -0.21418861492992408,
+    "pb_diff_lo": -0.3883344776375368,
+    "pb_diff_hi": -0.012567340660705308
+   }
+  ],
+  "paired_point_error": [
+   {
+    "horizon_nm": 100,
+    "versus": "baseline_a",
+    "n_flights": 24,
+    "mean_abs_error_diff_min": -7.480243572992788,
+    "ci_lo": -8.198071097790933,
+    "ci_hi": -6.721595230863882,
+    "share_model_better": 1.0
+   },
+   {
+    "horizon_nm": 100,
+    "versus": "baseline_b",
+    "n_flights": 24,
+    "mean_abs_error_diff_min": -1.2413826849955116,
+    "ci_lo": -2.0312916247004433,
+    "ci_hi": -0.4256437966844154,
+    "share_model_better": 0.75
+   },
+   {
+    "horizon_nm": 50,
+    "versus": "baseline_a",
+    "n_flights": 24,
+    "mean_abs_error_diff_min": -5.871485444526985,
+    "ci_lo": -6.875594443293181,
+    "ci_hi": -4.87505975901791,
+    "share_model_better": 1.0
+   },
+   {
+    "horizon_nm": 50,
+    "versus": "baseline_b",
+    "n_flights": 24,
+    "mean_abs_error_diff_min": -1.1096269891102877,
+    "ci_lo": -1.7117235977446703,
+    "ci_hi": -0.4800826419512635,
+    "share_model_better": 0.7916666666666666
+   },
+   {
+    "horizon_nm": 20,
+    "versus": "baseline_a",
+    "n_flights": 24,
+    "mean_abs_error_diff_min": -3.7405090031254447,
+    "ci_lo": -5.184982411612385,
+    "ci_hi": -2.4273242719809334,
+    "share_model_better": 1.0
+   },
+   {
+    "horizon_nm": 20,
+    "versus": "baseline_b",
+    "n_flights": 24,
+    "mean_abs_error_diff_min": -1.2851028548342083,
+    "ci_lo": -2.485070799945441,
+    "ci_hi": -0.18091348725872453,
+    "share_model_better": 0.625
+   }
+  ],
+  "reliability": [
+   {
+    "method": "model_uncalibrated",
+    "nominal": 0.1,
+    "observed": 0.2578167855183763,
+    "ci_lo": 0.14899176579508472,
+    "ci_hi": 0.38397065972222216
+   },
+   {
+    "method": "model_uncalibrated",
+    "nominal": 0.5,
+    "observed": 0.48464070213933075,
+    "ci_lo": 0.3522355592834684,
+    "ci_hi": 0.6315820144767512
+   },
+   {
+    "method": "model_uncalibrated",
+    "nominal": 0.9,
+    "observed": 0.6357652221612726,
+    "ci_lo": 0.5010281627906347,
+    "ci_hi": 0.7795052916933911
+   },
+   {
+    "method": "model_calibrated",
+    "nominal": 0.1,
+    "observed": 0.09462424574876577,
+    "ci_lo": 0.0327403393588402,
+    "ci_hi": 0.17353964803633462
+   },
+   {
+    "method": "model_calibrated",
+    "nominal": 0.5,
+    "observed": 0.48464070213933075,
+    "ci_lo": 0.3522355592834684,
+    "ci_hi": 0.6315820144767512
+   },
+   {
+    "method": "model_calibrated",
+    "nominal": 0.9,
+    "observed": 0.8058145913329676,
+    "ci_lo": 0.6921112709292588,
+    "ci_hi": 0.9110797247654925
+   },
+   {
+    "method": "baseline_b_calibrated",
+    "nominal": 0.1,
+    "observed": 0.14234777838727372,
+    "ci_lo": 0.07700085072765107,
+    "ci_hi": 0.21975690728694167
+   },
+   {
+    "method": "baseline_b_calibrated",
+    "nominal": 0.5,
+    "observed": 0.6522216127262753,
+    "ci_lo": 0.53642982405733,
+    "ci_hi": 0.7643261131770023
+   },
+   {
+    "method": "baseline_b_calibrated",
+    "nominal": 0.9,
+    "observed": 0.9349972572682391,
+    "ci_lo": 0.8717603133856849,
+    "ci_hi": 0.9896069603477691
+   }
+  ],
+  "drift": [
+   {
+    "split": "train",
+    "n_flights": 72,
+    "coverage": 0.9972545757071547,
+    "coverage_lo": 0.9950523544070153,
+    "coverage_hi": 0.9989782472314895,
+    "width_min": 3.8260440930199735,
+    "median_true_min": 14.083333333333334
+   },
+   {
+    "split": "calibration",
+    "n_flights": 24,
+    "coverage": 0.8022006141248721,
+    "coverage_lo": 0.6920600414078675,
+    "coverage_hi": 0.8950933194550009,
+    "width_min": 3.4544482462288557,
+    "median_true_min": 13.775
+   },
+   {
+    "split": "test",
+    "n_flights": 24,
+    "coverage": 0.7111903455842019,
+    "coverage_lo": 0.6012840335355096,
+    "coverage_hi": 0.8139952046967894,
+    "width_min": 3.43124685447344,
+    "median_true_min": 12.833333333333334
+   }
+  ],
+  "superiority_w5": {
+   "window_min": 5,
+   "n_flights": 24,
+   "share_model_longer": 1.0,
+   "share_tie": 0.0,
+   "share_baseline_longer": 0.0,
+   "mean_diff_min": 7.92638888888889,
+   "mean_ci_lo": 5.951380208333333,
+   "mean_ci_hi": 10.312560763888888
+  },
+  "arrivals_by_hour": [
+   {
+    "hour_local": "2026-10-18 18:00",
+    "train": 30,
+    "calibration": 0,
+    "test": 0
+   },
+   {
+    "hour_local": "2026-10-18 19:00",
+    "train": 27,
+    "calibration": 0,
+    "test": 0
+   },
+   {
+    "hour_local": "2026-10-18 20:00",
+    "train": 15,
+    "calibration": 11,
+    "test": 0
+   },
+   {
+    "hour_local": "2026-10-18 21:00",
+    "train": 0,
+    "calibration": 13,
+    "test": 7
+   },
+   {
+    "hour_local": "2026-10-18 22:00",
+    "train": 0,
+    "calibration": 0,
+    "test": 12
+   },
+   {
+    "hour_local": "2026-10-18 23:00",
+    "train": 0,
+    "calibration": 0,
+    "test": 5
+   }
+  ]
+ }
+}

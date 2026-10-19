@@ -1,0 +1,213 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Glidepath replay</title>
+<meta name="description" content="Replay of held-out Frankfurt arrivals with calibrated landing time intervals and trust points.">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css">
+<link rel="stylesheet" href="style.css">
+<style>
+  .app { display: grid; grid-template-columns: 1fr 340px; height: calc(100vh - 150px); min-height: 460px; }
+  #map { width: 100%; height: 100%; }
+  .panel { border-left: 1px solid var(--border); display: flex; flex-direction: column; min-height: 0; }
+  .controls { padding: 12px 16px; border-bottom: 1px solid var(--border); display: grid; gap: 10px; }
+  .row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .row label { font-size: 13px; color: var(--text-2); min-width: 64px; }
+  .row input[type=range] { flex: 1; min-width: 120px; }
+  #clock { font-variant-numeric: tabular-nums; font-weight: 600; }
+  .list { overflow-y: auto; padding: 0 16px 12px; }
+  .list h2 { font-size: 14px; color: var(--text-2); margin: 12px 0 6px; font-weight: 600; }
+  .arr { display: grid; grid-template-columns: 1fr auto; gap: 2px 8px; padding: 8px 0; border-bottom: 1px solid var(--border); font-size: 14px; }
+  .arr .cs { font-weight: 600; }
+  .arr .time { font-variant-numeric: tabular-nums; text-align: right; }
+  .arr .meta { color: var(--text-2); font-size: 13px; }
+  .dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; vertical-align: middle; }
+  .legend { font-size: 13px; color: var(--text-2); display: flex; gap: 12px; flex-wrap: wrap; }
+  .note { font-size: 13px; color: var(--text-2); }
+  @media (max-width: 760px) {
+    .app { grid-template-columns: 1fr; grid-template-rows: 55vh auto; height: auto; }
+    .panel { border-left: none; border-top: 1px solid var(--border); }
+    .list { max-height: 50vh; }
+  }
+</style>
+</head>
+<body>
+<div id="banner" class="banner"></div>
+<header class="top">
+  <h1>Glidepath</h1>
+  <nav><a href="index.html" class="active">Replay</a><a href="results.html">Results</a></nav>
+  <span class="muted">How early can a ground team at Frankfurt trust a landing time?</span>
+</header>
+<div class="app">
+  <div id="map" role="region" aria-label="Map of arrivals"></div>
+  <aside class="panel">
+    <div class="controls">
+      <div class="row">
+        <button id="play" type="button">Play</button>
+        <span id="clock">loading</span>
+      </div>
+      <div class="row"><label for="time">Time</label><input id="time" type="range" min="0" max="1" step="1" value="0"></div>
+      <div class="row"><label for="speed">Speed</label><input id="speed" type="range" min="1" max="60" step="1" value="20"><span id="speedv"></span></div>
+      <div class="row"><label>Window W</label><span id="windows"></span></div>
+      <div class="legend">
+        <span><span class="dot" style="background: var(--teal)"></span>trusted for W</span>
+        <span><span class="dot" style="background: var(--amber)"></span>before trust point</span>
+        <span><span class="dot" style="background: var(--gray)"></span>landed</span>
+      </div>
+    </div>
+    <div class="list">
+      <h2>Next arrivals by predicted touchdown</h2>
+      <div id="arrivals"></div>
+      <p class="note" id="note"></p>
+    </div>
+  </aside>
+</div>
+<footer id="footer" class="site"></footer>
+<script src="site.js"></script>
+<script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+<script>
+(function () {
+  const COLORS = { trusted: "#1baf7a", before: "#eda100", landed: "#9a9a94" };
+  const LANDED_SHOW_S = 120;
+  const STYLE_URL = "https://tiles.openfreemap.org/styles/positron";
+  const FALLBACK_STYLE = { version: 8, sources: {},
+    layers: [{ id: "bg", type: "background", paint: { "background-color": "#f4f4f2" } }] };
+
+  let data = null, now = 0, start = 0, end = 0, playing = false, speed = 20, win = null, last = null;
+  const fmt = new Intl.DateTimeFormat("en-GB", { timeZone: "Europe/Berlin", hour: "2-digit",
+    minute: "2-digit", second: "2-digit", hour12: false });
+  const fmtDay = new Intl.DateTimeFormat("en-GB", { timeZone: "Europe/Berlin", year: "numeric",
+    month: "2-digit", day: "2-digit" });
+  const hms = (t) => fmt.format(new Date(t * 1000));
+
+  const map = new maplibregl.Map({ container: "map", style: STYLE_URL, center: [8.57, 50.03], zoom: 6.6,
+    attributionControl: { compact: true } });
+  map.addControl(new maplibregl.NavigationControl({ showCompass: false }), "top-left");
+  let styleOk = false;
+  const useFallback = () => { if (!styleOk) { styleOk = true; map.setStyle(FALLBACK_STYLE); } };
+  map.on("error", (e) => { if (!map.isStyleLoaded()) useFallback(); });
+  setTimeout(() => { if (!map.isStyleLoaded()) useFallback(); }, 8000);
+  map.on("style.load", () => { styleOk = true; addLayers(); render(); });
+
+  function addLayers() {
+    if (map.getSource("aircraft")) return;
+    map.addSource("airport", { type: "geojson", data: { type: "FeatureCollection", features: [] } });
+    map.addLayer({ id: "airport", type: "circle", source: "airport",
+      paint: { "circle-radius": 5, "circle-color": "#111111", "circle-stroke-width": 2, "circle-stroke-color": "#ffffff" } });
+    map.addSource("aircraft", { type: "geojson", data: { type: "FeatureCollection", features: [] } });
+    map.addLayer({ id: "aircraft", type: "circle", source: "aircraft",
+      paint: { "circle-radius": 5, "circle-color": ["get", "color"],
+               "circle-stroke-width": 1.5, "circle-stroke-color": "#ffffff" } });
+    setAirport();
+  }
+
+  function setAirport() {
+    const src = map.getSource && map.getSource("airport");
+    if (src && data) src.setData({ type: "FeatureCollection", features: [
+      { type: "Feature", geometry: { type: "Point", coordinates: [data.airport.lon, data.airport.lat] }, properties: {} }] });
+  }
+
+  function stateAt(f, t) {
+    const p = f.points;
+    if (t < p[0][0] || t > f.touchdown + LANDED_SHOW_S) return null;
+    if (t >= f.touchdown) {
+      return { lat: data.airport.lat, lon: data.airport.lon, landed: true, row: p[p.length - 1] };
+    }
+    let i = 0;
+    while (i + 1 < p.length && p[i + 1][0] <= t) i++;
+    const a = p[i], b = p[i + 1] || [f.touchdown, data.airport.lat, data.airport.lon];
+    const k = b[0] > a[0] ? Math.min(1, (t - a[0]) / (b[0] - a[0])) : 0;
+    return { lat: a[1] + k * (b[1] - a[1]), lon: a[2] + k * (b[2] - a[2]), landed: false, row: a };
+  }
+
+  function trusted(f, t) {
+    const tt = f.trust_t[String(win)];
+    return tt !== null && tt !== undefined && t >= tt;
+  }
+
+  function render() {
+    if (!data) return;
+    document.getElementById("clock").textContent = hms(now) + " local, " + fmtDay.format(new Date(now * 1000));
+    document.getElementById("time").value = Math.round(now - start);
+    const feats = [], rows = [];
+    for (const f of data.flights) {
+      const s = stateAt(f, now);
+      if (!s) continue;
+      const state = s.landed ? "landed" : trusted(f, now) ? "trusted" : "before";
+      feats.push({ type: "Feature", geometry: { type: "Point", coordinates: [s.lon, s.lat] },
+        properties: { color: COLORS[state], id: f.id } });
+      if (!s.landed) rows.push({ f, state, pred: s.row[3], width: (s.row[5] - s.row[4]) / 60 });
+    }
+    const src = map.getSource && map.getSource("aircraft");
+    if (src) src.setData({ type: "FeatureCollection", features: feats });
+    rows.sort((a, b) => a.pred - b.pred);
+    const box = document.getElementById("arrivals");
+    box.innerHTML = rows.length ? "" : '<p class="note">No test arrival in the air at this time.</p>';
+    for (const r of rows) {
+      const el = document.createElement("div");
+      el.className = "arr";
+      const label = r.state === "trusted" ? "trusted for W" : "not yet trusted";
+      el.innerHTML = '<span class="cs"><span class="dot" style="background:' + COLORS[r.state] + '"></span>' +
+        (r.f.callsign || r.f.id) + '</span><span class="time">' + hms(r.pred) + '</span>' +
+        '<span class="meta">interval width ' + r.width.toFixed(1) + ' min</span><span class="meta">' + label + '</span>';
+      box.appendChild(el);
+    }
+  }
+
+  function tick(ts) {
+    if (last !== null && playing) {
+      now = Math.min(end, now + ((ts - last) / 1000) * speed);
+      if (now >= end) { playing = false; document.getElementById("play").textContent = "Play"; }
+      render();
+    }
+    last = ts;
+    requestAnimationFrame(tick);
+  }
+
+  function setWindow(w) {
+    win = w;
+    document.querySelectorAll("#windows button").forEach((b) => b.classList.toggle("on", Number(b.dataset.w) === w));
+    render();
+  }
+
+  fetch("data/replay.json").then((r) => r.json()).then((d) => {
+    data = d;
+    window.glidepathLabel(d.synthetic);
+    start = Math.min(...d.flights.map((f) => f.points[0][0]));
+    end = Math.max(...d.flights.map((f) => f.touchdown)) + LANDED_SHOW_S;
+    now = start;
+    const slider = document.getElementById("time");
+    slider.max = Math.round(end - start);
+    slider.addEventListener("input", () => { now = start + Number(slider.value); render(); });
+    const wbox = document.getElementById("windows");
+    for (const w of d.windows_min) {
+      const b = document.createElement("button");
+      b.type = "button"; b.dataset.w = w; b.textContent = w + " min";
+      b.addEventListener("click", () => setWindow(w));
+      wbox.appendChild(b);
+      wbox.appendChild(document.createTextNode(" "));
+    }
+    const mid = d.windows_min[Math.floor(d.windows_min.length / 2)];
+    setWindow(mid);
+    document.getElementById("note").textContent = d.flights.length + " held-out test flights. Times are Europe/Berlin.";
+    if (map.isStyleLoaded()) { addLayers(); setAirport(); }
+    render();
+  }).catch((e) => { document.getElementById("clock").textContent = "Could not load replay data."; console.warn(e); });
+
+  const sp = document.getElementById("speed");
+  const spv = document.getElementById("speedv");
+  const setSpeed = () => { speed = Number(sp.value); spv.textContent = speed + "x"; };
+  sp.addEventListener("input", setSpeed); setSpeed();
+  document.getElementById("play").addEventListener("click", (e) => {
+    if (!data) return;
+    if (now >= end) now = start;
+    playing = !playing;
+    e.target.textContent = playing ? "Pause" : "Play";
+  });
+  requestAnimationFrame(tick);
+})();
+</script>
+</body>
+</html>
