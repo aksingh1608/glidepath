@@ -6,11 +6,17 @@ Every number in these files is read from the results dictionary.
 from __future__ import annotations
 
 import os
+from datetime import datetime, timezone
+from zoneinfo import ZoneInfo
 
-DEMO_LINK = ""  # set to the Vercel URL once deployed
-DEMO_TEXT = DEMO_LINK or "The replay site is in web/. Run make serve to open it locally."
 REPO_LINK = "https://github.com/aksingh1608/glidepath"
-NOT_OPERATIONAL = "Research demo. Not for operational use."
+NOT_OPERATIONAL = "Research demo, not for operational use."
+AUTHOR = "Aryan Kumar Singh"
+AFFILIATION = "Berlin School of Business and Innovation"
+AUTHOR_LINE = (f"{AUTHOR} · MSc student at {AFFILIATION}, Berlin · "
+               "[bewithaksingh.com](https://bewithaksingh.com) · "
+               "[LinkedIn](https://linkedin.com/in/aksingh06) · [GitHub](https://github.com/aksingh1608)")
+LOCAL_TZ = ZoneInfo("Europe/Berlin")
 
 METHOD_NAMES = {"model_calibrated": "Model, calibrated", "model_uncalibrated": "Model, uncalibrated",
                 "baseline_b_calibrated": "Baseline B, calibrated", "model": "Model (P50)",
@@ -37,15 +43,50 @@ def table(header, rows):
     return "\n".join(out)
 
 
+def local_dt(utc_text):
+    """'2026-10-18 15:45:52 UTC' to an aware Europe/Berlin datetime."""
+    t = datetime.strptime(utc_text, "%Y-%m-%d %H:%M:%S UTC").replace(tzinfo=timezone.utc)
+    return t.astimezone(LOCAL_TZ)
+
+
+def day_text(t):
+    return f"{t.day} {t:%B %Y}"
+
+
+def span_text(a_utc, b_utc):
+    """Local span: one date when both ends fall on the same day."""
+    a, b = local_dt(a_utc), local_dt(b_utc)
+    if a.date() == b.date():
+        return f"{day_text(a)}, {a:%H:%M} to {b:%H:%M %Z}"
+    return f"{day_text(a)} {a:%H:%M %Z} to {day_text(b)} {b:%H:%M %Z}"
+
+
+def a_an(word):
+    return "an" if str(word)[:1] in "8" or str(word).startswith(("11", "18")) else "a"
+
+
+def secs_text(s):
+    return "a minute" if s == 60 else f"{num(s)} seconds"
+
+
+def window_text(r):
+    d = r["data_window"]
+    a, b = local_dt(d["first_utc"]), local_dt(d["last_utc"])
+    end = f"{b:%H:%M %Z}"
+    if b.date() != a.date():
+        end += " the next morning" if (b.date() - a.date()).days == 1 and b.hour < 12 else f" on {day_text(b)}"
+    return f"{day_text(a)}, {a:%H:%M %Z} to {end} ({f1(d['hours'])} hours)"
+
+
 def notice(r):
     d, c = r["data_window"], r["counts"]
     if r["synthetic"]:
         return ("> **SYNTHETIC TEST.** These results come from simulated data made to test the code. "
                 "They say nothing about Frankfurt.")
-    return (f"> **Pilot study.** One evening of live OpenSky data, {d['first_local']} to "
-            f"{d['last_local']} ({f1(d['hours'])} hours). {c['arrivals_kept']} arrivals kept, "
-            f"{c['test_flights']} in the held-out test set. The collector keeps running, so later "
-            "runs will cover more days.")
+    return (f"> This is a pilot. It uses one evening of live OpenSky data from Frankfurt, "
+            f"{window_text(r)}. I kept {c['arrivals_kept']} arrivals and held out the last "
+            f"{c['test_flights']} as a test set. The collector is still running, so the next "
+            "version will use separate days.")
 
 
 def hypothesis_text(key, h, r):
@@ -62,10 +103,16 @@ def hypothesis_text(key, h, r):
     if key == "H2":
         p = "n/a" if h.get("wilcoxon_p") is None else f"{h['wilcoxon_p']:.3g}"
         extra = f" ({h['note']})" if h.get("note") else ""
-        return (f"H2 {s}. Median paired difference in trust lead at W = {h['window_min']} min, "
-                f"model minus baseline B: {f1(h['median_diff_min'])} min, 95% bootstrap interval "
-                f"{f1(h['ci_lo'])} to {f1(h['ci_hi'])} min, {h['n_flights']} flights, "
-                f"Wilcoxon p = {p}{extra}.")
+        out = (f"H2 {s}. Median paired difference in trust lead at W = {h['window_min']} min, "
+               f"model minus baseline B: {f1(h['median_diff_min'])} min, 95% bootstrap interval "
+               f"{f1(h['ci_lo'])} to {f1(h['ci_hi'])} min, {h['n_flights']} flights, "
+               f"Wilcoxon p = {p}{extra}.")
+        b = baseline_facts(r)
+        if b["base_width"] > h["window_min"]:
+            out += (f" Baseline B's mean width ({f1(b['base_width'])} min) is above W, so it cannot "
+                    f"qualify at W = {h['window_min']}. At W = {b['wmax']} the medians are "
+                    f"{f1(b['model_wmax']['median_min'])} and {f1(b['base_wmax']['median_min'])} min.")
+        return out
     if key == "H3":
         base = (f"H3 {s}. Median trust lead {f1(h['median_quiet_min'])} min in the quietest "
                 f"traffic tercile ({h['n_quiet']} flights) and {f1(h['median_busy_min'])} min in "
@@ -140,8 +187,9 @@ def shap_table(r):
 
 def split_text(r):
     s = r["splits"]
-    spans = "; ".join(f"{k.capitalize()}: {s[k]['flights']} flights, {s[k]['first_touchdown_utc']} to "
-                      f"{s[k]['last_touchdown_utc']}" for k in ("train", "calibration", "test"))
+    spans = "; ".join(f"{k.capitalize()}: {s[k]['flights']} flights landing "
+                      f"{span_text(s[k]['first_touchdown_utc'], s[k]['last_touchdown_utc'])}"
+                      for k in ("train", "calibration", "test"))
     if s["scheme"] == "time_block":
         m = r["config"]["method"]
         rule = (f"Fewer than {m['min_split_days']} local days had {m['min_arrivals_per_day']} or "
@@ -162,6 +210,75 @@ def key_numbers(r):
     trust = {(t["method"], t["window_min"]): t for t in r["trust"]}
     w = r["config"]["main_window_min"]
     return trust[("model_calibrated", w)], trust[("baseline_b_calibrated", w)], r["paired_w5"]
+
+
+def baseline_facts(r):
+    cfg = r["config"]
+    trust = {(t["method"], t["window_min"]): t for t in r["trust"]}
+    cov = {(c["method"], c["band"]): c for c in r["coverage"]}
+    wmax = max(cfg["windows_min"])
+    allb = next(x for x in r["diagnostics"]["scores"] if x["band"] == "all")
+    return {"w": cfg["main_window_min"], "wmax": wmax,
+            "model_w": trust[("model_calibrated", cfg["main_window_min"])],
+            "base_w": trust[("baseline_b_calibrated", cfg["main_window_min"])],
+            "model_wmax": trust[("model_calibrated", wmax)],
+            "base_wmax": trust[("baseline_b_calibrated", wmax)],
+            "base_width": cov[("baseline_b_calibrated", "all")]["width_min"],
+            "model_cov": cov[("model_calibrated", "all")]["coverage"],
+            "base_cov": cov[("baseline_b_calibrated", "all")]["coverage"],
+            "is_model": allb["is_model"], "is_base": allb["is_base"],
+            "target": num(cfg["coverage_target_pct"]), "alpha": cfg["alpha"]}
+
+
+def headline_text(r):
+    b = baseline_facts(r)
+    return (f"On the {r['counts']['test_flights']} test flights, the landing time became trustworthy "
+            f"within {a_an(b['w'])} {b['w']} minute window a median of {f1(b['model_w']['median_min'])} "
+            "minutes before touchdown.")
+
+
+def baseline_note(r, short=False):
+    """Why baseline B gets zero at the main window, and the like for like checks."""
+    b = baseline_facts(r)
+    w, wm = b["w"], b["wmax"]
+    first = []
+    if b["base_width"] > w and b["base_w"]["share_never_trusted"] == 1:
+        first = [f"Baseline B's intervals average {f1(b['base_width'])} minutes wide, so they can "
+                 f"never fit {a_an(w)} {w} minute window. Its zero lead at W = {w} comes from that "
+                 "width, not from a wrong guess."]
+    w10 = (f"at W = {wm}, where the baseline can qualify, the model's median lead is "
+           f"{f1(b['model_wmax']['median_min'])} minutes against {f1(b['base_wmax']['median_min'])}")
+    score = (f"The interval score, which adds width and a penalty for every miss, is "
+             f"{f1(b['is_model'])} minutes for the model and {f1(b['is_base'])} for the baseline.")
+    if short:
+        return (f"At W = {wm}, where baseline B can qualify, the model's median lead is "
+                f"{f1(b['model_wmax']['median_min'])} minutes against "
+                f"{f1(b['base_wmax']['median_min'])}. {score}")
+    narrow = "too narrow" if b["model_cov"] < 1 - b["alpha"] else "wide enough"
+    rest = [f"Two fairer checks: {w10}, and the baseline is never trusted on "
+            f"{pct(b['base_wmax']['share_never_trusted'])} percent of flights.", score,
+            f"The model's own intervals are {narrow} on test: they hold the truth "
+            f"{pct(b['model_cov'])} percent of the time against {a_an(b['target'])} {b['target']} "
+            f"percent target. Baseline B holds it {pct(b['base_cov'])} percent of the time."]
+    return " ".join(["A note on the baseline."] + first + rest)
+
+
+def limitations(r):
+    c, m = r["counts"], r["config"]["method"]
+    lm = r["label_methods"]
+    est = lm.get("ground_extrapolated", 0) + lm.get("fallback_extrapolated", 0)
+    wmin = min(r["config"]["windows_min"])
+    return [
+        f"One evening of data. The {c['test_flights']} test flights come from the later part of one evening.",
+        "Train, calibration and test are time blocks from the same evening, not separate days.",
+        "OpenSky depends on volunteer receivers, so coverage near the ground at Frankfurt has gaps.",
+        f"Touchdown is estimated from ADS-B, not taken from an official landing time. {est} of "
+        f"{c['arrivals_kept']} touchdowns were estimated across a gap in the reports, not seen "
+        f"between two reports under {secs_text(m['midpoint_max_gap_s'])} apart. That error can "
+        f"reach {num(m['extrap_cap_s'] / 60)} minutes, so read the W = {wmin} results with care.",
+        "The traffic features treat other aircraft as known arrivals, the way a flight plan would.",
+        "Conformal coverage holds on average over rows, not for every single flight.",
+    ]
 
 
 def figures_md(r, prefix):
@@ -239,14 +356,13 @@ def further_text(r):
         f"test rows the model scored {f1(allb['is_model'])} minutes against "
         f"{f1(allb['is_base'])} for baseline B, a difference of "
         f"{ci(allb['is_diff'], allb['is_diff_lo'], allb['is_diff_hi'])} minutes.",
-        f"**Calibration drift.** The conformal step reached {pct(dr['calibration']['coverage'])} "
-        f"percent coverage on the calibration flights, as it should by design, but "
-        f"{pct(dr['test']['coverage'])} percent (95% CI {pct(dr['test']['coverage_lo'])} to "
-        f"{pct(dr['test']['coverage_hi'])}) on the test flights, which landed later in the "
-        f"evening. On the train flights coverage was {pct(dr['train']['coverage'])} percent: the "
-        "quantile model fits its own training flights much more tightly than new flights. Both "
-        "facts point the same way. The gap between calibration and test is the main reason H1 "
-        "fails, and more days of data, split by day, is the fix.",
+        f"**Calibration drift.** The intervals are too narrow on the test flights. Calibration "
+        f"reached {pct(dr['calibration']['coverage'])} percent on the calibration flights, which the "
+        f"method guarantees, but only {pct(dr['test']['coverage'])} percent (95% CI "
+        f"{pct(dr['test']['coverage_lo'])} to {pct(dr['test']['coverage_hi'])}) on the test flights, "
+        f"which landed later in the evening. On its own training flights the model covers "
+        f"{pct(dr['train']['coverage'])} percent, so it fits those flights much tighter than new ones. "
+        "This gap is why H1 fails. Splitting by whole days, once more data is in, is the fix.",
     ]
     return "\n\n".join(parts)
 
@@ -300,15 +416,6 @@ def method_steps(r):
         "landing direction).",
     ])
 
-
-LIMITATIONS = [
-    "One evening of data. The test set is small and covers one part of one day.",
-    "The split is a time block inside the same evening, not separate days.",
-    "OpenSky relies on volunteer receivers, so coverage near the ground has gaps.",
-    "Touchdown is inferred from ADS-B, not taken from an official landing time, so labels carry noise.",
-    "Inbound status of other aircraft is taken as known, like a flight plan, for the traffic features.",
-    "Conformal coverage is marginal: it holds on average over rows, not for each flight.",
-]
 
 RELATED = [
     "DFS Aviation Services, Arrival Manager (AMAN). https://dfs-as.aero/download/12107",
@@ -375,11 +482,12 @@ def bold_best(vals, fmt, lower=True):
 
 def glance_table(r):
     model, base, pair = key_numbers(r)
-    w = r["config"]["main_window_min"]
+    b = baseline_facts(r)
+    w, wm = b["w"], b["wmax"]
     dg = r["diagnostics"]
-    sup = dg["superiority_w5"]
     acc = {(a["horizon_nm"], a["method"]): a for a in r["point_accuracy"]}
-    h = sorted({a["horizon_nm"] for a in r["point_accuracy"]})[len({a["horizon_nm"] for a in r["point_accuracy"]}) // 2]
+    hs = sorted({a["horizon_nm"] for a in r["point_accuracy"]})
+    h = hs[len(hs) // 2]
     allb = next(x for x in dg["scores"] if x["band"] == "all")
     cov = next(c for c in r["coverage"] if c["method"] == "model_calibrated" and c["band"] == "all")
     bcov = next(c for c in r["coverage"] if c["method"] == "baseline_b_calibrated" and c["band"] == "all")
@@ -390,9 +498,12 @@ def glance_table(r):
     gap = [abs(cov["coverage"] - target), abs(bcov["coverage"] - target)]
     cov_cells = [pcts(cov["coverage"]), pcts(bcov["coverage"])]
     cov_cells[gap.index(min(gap))] = f"**{cov_cells[gap.index(min(gap))]}**"
-    return table(["Measure", "Model", "Baseline B", "Baseline A"], [
+    rows = table(["Measure", "Model", "Baseline B", "Baseline A"], [
         [f"Median trust lead at W = {w} min (higher is better)",
          *bold_best([model["median_min"], base["median_min"], None], mins, lower=False)],
+        [f"Median trust lead at W = {wm} min (higher is better)",
+         *bold_best([b["model_wmax"]["median_min"], b["base_wmax"]["median_min"], None], mins,
+                    lower=False)],
         [f"Test flights never trusted at W = {w} min",
          *bold_best([model["share_never_trusted"], base["share_never_trusted"], None], pcts)],
         [f"Mean absolute error at {h} nm out",
@@ -402,9 +513,11 @@ def glance_table(r):
         [f"Interval coverage on test (target {num(r['config']['coverage_target_pct'])}%)",
          *cov_cells, "no interval"],
         ["Mean interval width on test", *bold_best([cov["width_min"], bcov["width_min"], None], mins)],
-    ]) + (f"\n\nThe model gave the longer trust lead on **{pct(sup['share_model_longer'])}%** of test "
-          f"flights and the shorter one on {pct(sup['share_baseline_longer'])}%. Bold marks the "
-          "better value in each row.")
+    ])
+    note = (f"Baseline B's intervals are wider than {w} minutes, so the W = {wm} row and the interval "
+            "score are the like for like comparisons." if b["base_width"] > w else
+            "Bold marks the better value in each row.")
+    return rows + "\n\n" + note
 
 
 def data_table(r):
@@ -417,37 +530,43 @@ def label_table(r):
                  [[LABEL_NAMES.get(k, k), v] for k, v in r["label_methods"].items()])
 
 
+def not_held(r):
+    bad = [k for k, h in r["hypotheses"].items() if h["status"] == "not supported"]
+    if not bad:
+        return "No hypothesis was rejected. I report every result as it came out."
+    names = " and ".join([", ".join(bad[:-1]), bad[-1]] if len(bad) > 1 else bad)
+    return f"{names} did not hold. I report them as they came out."
+
+
 def readme(r):
     d, c, cfg = r["data_window"], r["counts"], r["config"]
     model, base, pair = key_numbers(r)
     w = cfg["main_window_min"]
-    p = "n/a" if pair.get("wilcoxon_p") is None else f"{pair['wilcoxon_p']:.2g}"
-    demo = f"**[Live replay]({DEMO_LINK})** · " if DEMO_LINK else ""
     ex = r["examples"]
     ex_imgs = "\n".join(f'  <img src="{FIG}{os.path.basename(e["figure"])}" '
                         f'alt="Example flight, {e["role"]} lead" width="{"80%" if i == 0 else "49%"}">'
                         + ("\n</p>\n<p align=\"center\">" if i == 0 and len(ex) > 1 else "")
                         for i, e in enumerate(ex))
-    return f"""<h1 align="center">Glidepath</h1>
+    windows = ", ".join(str(x) for x in cfg["windows_min"][:-1]) + f" and {cfg['windows_min'][-1]}"
+    return f"""# Glidepath
 
-<p align="center"><b>How early can a ground team at Frankfurt trust a landing time?</b></p>
+How early can a ground team at Frankfurt trust a landing time?
 
-<p align="center">
+{AUTHOR_LINE}
+
+<p>
   <img src="https://img.shields.io/badge/python-3776AB?logo=python&logoColor=white" alt="Python">
-  <img src="https://img.shields.io/badge/model-LightGBM%20quantile-2a78d6" alt="LightGBM quantile">
-  <img src="https://img.shields.io/badge/intervals-conformal%20(CQR)-1baf7a" alt="Conformal">
-  <img src="https://img.shields.io/badge/data-OpenSky%20ADS--B-eb6834" alt="OpenSky">
-  <img src="https://img.shields.io/badge/status-pilot-eda100" alt="Pilot">
-  <img src="https://img.shields.io/badge/license-MIT-52514e" alt="MIT">
+  <img src="https://img.shields.io/badge/data-OpenSky%20ADS--B-eb6834" alt="OpenSky ADS-B data">
+  <img src="https://img.shields.io/badge/license-MIT-52514e" alt="MIT license">
 </p>
 
 {notice(r)}
 
-> ### {r['headline']}
->
-> Baseline B's median trust lead was {f1(base['median_min'])} minutes. Median paired gain {f1(pair['median_diff_min'])} minutes (95% bootstrap interval {f1(pair['ci_lo'])} to {f1(pair['ci_hi'])}), Wilcoxon p = {p}, {pair['n_flights']} flights.
+> ### {headline_text(r)}
 
-{demo}[Research note](docs/research_note.md) · [One-page summary](docs/summary.md) · [Research plan](docs/research_plan.md) · [Related work](docs/related_work.md)
+{baseline_note(r)}
+
+[Research note](docs/research_note.md) · [One page summary](docs/summary.md) · [Research plan](docs/research_plan.md) · [Related work](docs/related_work.md)
 
 <p align="center">
   <img src="{FIG}paired_lead.png" alt="Trust lead per test flight, model against baseline B" width="70%">
@@ -455,14 +574,14 @@ def readme(r):
 
 ## The question
 
-At an A-CDM airport the estimated landing time drives stand allocation, ground handling and the next departure. Accuracy on average is not enough. A ramp team needs to know **from when** the estimate stops moving.
+Under A-CDM, the estimated landing time feeds stand planning, ground handling and the next departure. A ramp team needs more than a good estimate on average. It needs to know when the estimate has settled enough to act on.
 
-So we predict touchdown with a calibrated interval and measure, for each flight, when that interval becomes both narrow and right:
+I predict the time to touchdown with {a_an(num(cfg['coverage_target_pct']))} {num(cfg['coverage_target_pct'])} percent interval and look at how each flight's interval behaves as it gets closer:
 
-* **Trust point.** The earliest prediction from which every later interval is no wider than a window W and contains the true touchdown.
-* **Trust lead.** Touchdown time minus trust point. A flight that is never trusted gets a lead of zero.
+* Trust point: the first prediction after which every interval is no wider than W minutes and still contains the real touchdown time.
+* Trust lead: the minutes from the trust point to touchdown. A flight that never reaches a trust point gets zero.
 
-We report W = {', '.join(str(x) for x in cfg['windows_min'])} minutes, with W = {w} minutes as the main case.
+I use W = {windows} minutes. W = {w} is the main case.
 
 ## Results at a glance
 
@@ -472,7 +591,7 @@ We report W = {', '.join(str(x) for x in cfg['windows_min'])} minutes, with W = 
 
 {hypothesis_table(r)}
 
-We report negative results as they are. Full rules are in the [research plan](docs/research_plan.md).
+{not_held(r)} The full rules are in the [research plan](docs/research_plan.md).
 
 ## 1. Trust lead
 
@@ -522,7 +641,7 @@ Each curve shows the share of test flights trusted at or before a given lead, fo
 
 ## 5. Example flights
 
-The band is the calibrated interval minus the true time; the dashed line is the trust point.
+The band is the calibrated interval minus the true time. The dashed line is the trust point.
 
 <p align="center">
 {ex_imgs}
@@ -538,10 +657,10 @@ The band is the calibrated interval minus the true time; the dashed line is the 
   <img src="{FIG}data_overview.png" alt="Arrivals per hour by split" width="90%">
 </p>
 
-* **Source.** OpenSky Network state vectors in a box around Frankfurt, polled live.
-* **Window.** {d['first_local']} to {d['last_local']} ({f1(d['hours'])} hours), {d['raw_rows']} state vectors from {d['aircraft']} aircraft.
-* **Flights.** {c['flights_total']} tracks, **{c['arrivals_kept']} arrivals kept**, {c['rows']} prediction rows, {c['go_arounds']} go-arounds.
-* **Split.** {split_text(r)}
+* Source: OpenSky Network state vectors in a box around Frankfurt, polled live.
+* Window: {window_text(r)}. {d['raw_rows']} state vectors from {d['aircraft']} aircraft.
+* Flights: {c['flights_total']} tracks, {c['arrivals_kept']} arrivals kept, {c['rows']} prediction rows, {c['go_arounds']} go-arounds.
+* Split: {split_text(r)}
 
 {details('Why tracks were dropped, and how touchdown was labelled', data_table(r) + chr(10) + chr(10) + label_table(r))}
 
@@ -560,13 +679,13 @@ flowchart LR
 
 {method_steps(r)}
 
-**Baselines.** Baseline A is distance divided by ground speed (a point estimate). Baseline B is the empirical quantiles of time to touchdown by distance bin and landing direction, calibrated the same way as the model.
+Baselines: Baseline A is distance divided by ground speed, a point estimate. Baseline B is the empirical quantiles of time to touchdown by distance bin and landing direction, calibrated the same way as the model.
 
-**Statistics.** All intervals resample whole test flights ({cfg['n_boot']} bootstrap draws), because rows inside a flight are not independent. The paired test is a Wilcoxon signed-rank test.
+Statistics: every interval resamples whole test flights ({cfg['n_boot']} bootstrap draws), because rows inside a flight are not independent. The paired test is a Wilcoxon signed-rank test.
 
 ## Limitations
 
-{chr(10).join('* ' + x for x in LIMITATIONS)}
+{chr(10).join('* ' + x for x in limitations(r))}
 
 ## Run it yourself
 
@@ -575,8 +694,9 @@ make install              # create .venv and install packages
 make test                 # unit tests
 make results-synthetic    # SYNTHETIC TEST run of the full pipeline, no API needed
 make status               # what the collector has saved so far
-make results              # run on live data in data/raw/live
-make serve                # replay site on http://localhost:8000
+make results              # rebuild everything from the live data in data/raw/live
+make docs                 # rebuild README and docs from results/results.json only
+make serve                # replay site on your own machine at localhost:8000
 ```
 
 The collector needs an OpenSky API client in `credentials.json`, which is never committed:
@@ -592,7 +712,7 @@ collect_live.py        OpenSky collector, standard library only
 run.py                 one command from raw CSVs to results, figures, docs and site data
 pipeline/              data, features, splits, models, trust, evaluation, diagnostics, figures, docs
 tests/                 leakage, split, trust, conformal and scoring tests
-results/               results.json, tables and figures (every number in this README comes from here)
+results/               results.json, tables and figures
 docs/                  research note, summary, research plan, related work
 web/                   static replay site (MapLibre)
 ```
@@ -611,9 +731,9 @@ Data from [The OpenSky Network](https://opensky-network.org). If you use this wo
 
 ## License
 
-MIT, see [LICENSE](LICENSE). {NOT_OPERATIONAL}
+MIT, see [LICENSE](LICENSE).
 
-<sub>Generated by `run.py` from `results/results.json` on {r['generated_utc']}. No number in this file is typed by hand.</sub>
+<sub>All numbers in this README come from results/results.json. Run make results to rebuild it from the raw data. {NOT_OPERATIONAL}</sub>
 """
 
 
@@ -628,15 +748,16 @@ def discussion(r):
     elif h["H2"]["status"] == "not supported":
         parts.append(f"At W = {w} minutes the model did not give a longer trust lead than baseline "
                      f"B. The median paired difference was {f1(pair['median_diff_min'])} minutes. "
-                     "This is a negative result for the main claim, and we report it as such.")
+                     "This is a negative result for the main claim, and I report it as such.")
     else:
         parts.append(f"At W = {w} minutes the median paired difference was "
                      f"{f1(pair['median_diff_min'])} minutes, but its bootstrap interval includes "
-                     "zero. With this sample we cannot tell the model and baseline B apart.")
+                     "zero. With this sample I cannot tell the model and baseline B apart.")
+    parts.append(baseline_note(r, short=True))
     parts.append(f"{pct(model['share_never_trusted'])} percent of test flights were never trusted by "
                  f"the calibrated model at W = {w} minutes, against "
                  f"{pct(base['share_never_trusted'])} percent for baseline B. The trust point is "
-                 "strict: one late miss resets it, and an interval built to miss a share of rows "
+                 "strict. One late miss resets it, and an interval built to miss a share of rows "
                  "will often miss close to touchdown.")
     if h["H1"]["status"] == "supported":
         parts.append("Calibration brought coverage close to the target in every band with enough "
@@ -644,48 +765,59 @@ def discussion(r):
     else:
         parts.append(f"H1 is {h['H1']['status']}. Calibration on one block of the evening does not "
                      "guarantee coverage on the next block when traffic changes.")
-    parts.append("H3 and H4 depend on small groups in a pilot of one evening. Their verdicts "
-                 f"({h['H3']['status']} and {h['H4']['status']}) should be read as a first look.")
+    parts.append("H3 and H4 rest on small groups in a pilot of one evening. Read their results "
+                 f"({h['H3']['status']} and {h['H4']['status']}) as a first look.")
     return "\n\n".join(parts)
 
 
 def data_source(r):
-    d = r["data_window"]
     if r["synthetic"]:
         return (f"SYNTHETIC TEST: the data come from `pipeline/synthetic.py`, simulated in the "
-                f"collector format for {d['first_local']} to {d['last_local']}.")
-    return (f"We polled the OpenSky Network REST API for state vectors around Frankfurt from "
-            f"{d['first_local']} to {d['last_local']}.")
+                f"collector format for {window_text(r)}.")
+    return (f"I polled the OpenSky Network REST API for state vectors around Frankfurt on "
+            f"{window_text(r)}.")
 
 
 def research_note(r):
     d, c, cfg = r["data_window"], r["counts"], r["config"]
     model, base, pair = key_numbers(r)
+    b = baseline_facts(r)
     w = cfg["main_window_min"]
     title = "How early can a ground team trust a landing time? A pilot study at Frankfurt"
     if r["synthetic"]:
         title = "SYNTHETIC TEST: " + title
+    month = local_dt(d["first_utc"])
+    narrow = ("below target, which points to drift within the evening" if b["model_cov"] < 1 - b["alpha"]
+              else "on target")
+    cant = (f" An empirical baseline could not qualify at that window because its intervals were wider "
+            f"than {w} minutes; at W = {b['wmax']} its median lead was {f1(b['base_wmax']['median_min'])} "
+            "minutes." if b["base_width"] > w else
+            f" An empirical baseline had a median trust lead of {f1(base['median_min'])} minutes.")
     return f"""# {title}
+
+{AUTHOR}, {AFFILIATION}, Berlin. {month:%B %Y}.
 
 {notice(r)}
 
-*Generated by `run.py` from `results/results.json`. {NOT_OPERATIONAL}*
-
 ## Abstract
 
-Ground teams at an A-CDM airport plan stands and handling around the estimated landing time. They need to know from when that estimate can be trusted, not only how accurate it is on average. We study this for arrivals at Frankfurt (EDDF) with open OpenSky ADS-B data. A LightGBM quantile model predicts time to touchdown, and conformalized quantile regression calibrates the interval per distance band to {num(cfg['coverage_target_pct'])} percent target coverage. For each flight we define the trust point as the earliest prediction from which every later interval is no wider than a window W and contains the true touchdown. In this pilot of {f1(d['hours'])} hours of live data, {c['test_flights']} held-out test flights had a median trust lead of {f1(model['median_min'])} minutes at W = {w} minutes, against {f1(base['median_min'])} minutes for an empirical baseline. The median paired difference was {f1(pair['median_diff_min'])} minutes (95% interval {f1(pair['ci_lo'])} to {f1(pair['ci_hi'])}). The study is small and grows as the collector keeps running.
+Ground teams at A-CDM airports plan stands and handling around the estimated landing time. They need to know when that estimate can be trusted, not only how accurate it is on average. I study this for arrivals at Frankfurt (EDDF) using open ADS-B data from the OpenSky Network. LightGBM quantile models predict the time to touchdown, and conformalized quantile regression calibrates the interval per distance band to {num(cfg['coverage_target_pct'])} percent target coverage. For each flight I define a trust point: the first prediction after which every interval is no wider than a window W and contains the true touchdown. On {f1(d['hours'])} hours of live data, the {c['test_flights']} held out test flights had a median trust lead of {f1(model['median_min'])} minutes at W = {w}.{cant} The model's test coverage was {pct(b['model_cov'])} percent, {narrow}. This is a pilot, and data collection continues.
 
 ## 1. Introduction
 
-In Airport Collaborative Decision Making (A-CDM), the estimated landing time (ELDT) feeds the estimated in-block time, stand and gate planning, and the target off-block time of the next departure. The EUROCONTROL A-CDM manual names both the accuracy and the timeliness of ELDT as performance indicators. A ground team needs both at once: an estimate that is accurate on average but still moves in the last minutes forces late decisions.
+In Airport Collaborative Decision Making (A-CDM), the estimated landing time (ELDT) feeds the estimated in-block time, stand and gate planning, and the target off-block time of the next departure. The EUROCONTROL A-CDM manual names both the accuracy and the timeliness of ELDT as performance indicators. A ground team needs both at once. An estimate that is right on average but still moves in the last minutes forces late decisions.
 
-We ask how early a ground team at Frankfurt can trust a landing time. We answer with a prediction interval and a per-flight trust point. Earlier work predicts landing time well (for example DFS AMAN, FlightAware Foresight, and research models at Dallas/Fort Worth and Incheon) and some work gives intervals (Glina et al. 2012, Kim, Yoon and Lee 2025). We did not find a study that measures when the interval for one flight becomes both narrow and correct. The full review is in `docs/related_work.md`.
+I ask how early a ground team at Frankfurt can trust a landing time. I answer with a prediction interval and a trust point for each flight. Earlier work predicts landing time well (for example DFS AMAN, FlightAware Foresight, and research models at Dallas/Fort Worth and Incheon), and some work gives intervals (Glina et al. 2012, Kim, Yoon and Lee 2025). I did not find a study that measures when the interval for one flight becomes both narrow and correct. The full review is in `docs/related_work.md`.
 
 ## 2. Data
 
-{data_source(r)} This gave {d['raw_rows']} state vectors from {d['aircraft']} aircraft. We split tracks into {c['flights_total']} flights and kept {c['arrivals_kept']} arrivals.
+{data_source(r)} This gave {d['raw_rows']} state vectors from {d['aircraft']} aircraft. I split the tracks into {c['flights_total']} flights and kept {c['arrivals_kept']} arrivals.
 
-Drop reasons: {', '.join(f'{k} {v}' for k, v in r['drop_reasons'].items())}. Label methods: {', '.join(f'{k} {v}' for k, v in r['label_methods'].items())}. Landing directions: {', '.join(f'{k} {v}' for k, v in c['directions'].items())}.
+{data_table(r)}
+
+{label_table(r)}
+
+Landing directions: {', '.join(f'{k} {v}' for k, v in c['directions'].items())}.
 
 {split_text(r)}
 
@@ -693,13 +825,17 @@ Drop reasons: {', '.join(f'{k} {v}' for k, v in r['drop_reasons'].items())}. Lab
 
 {method_steps(r)}
 
-**Baselines.** Baseline A divides distance by ground speed. Baseline B takes empirical quantiles of time to touchdown in training, by distance bin and recent landing direction, and gets the same conformal correction as the model.
+Baselines: Baseline A divides distance by ground speed. Baseline B takes empirical quantiles of time to touchdown in training, by distance bin and recent landing direction, and gets the same conformal correction as the model.
 
-**Further statistics.** The interval score and the pinball loss are proper scores [gneiting2007strictly], so they reward intervals that are both narrow and correct. We also report paired point error per flight, quantile reliability and coverage per split.
+Further statistics: the interval score and the pinball loss are proper scores [gneiting2007strictly], so they reward intervals that are both narrow and correct. I also report paired point error per flight, quantile reliability and coverage per split.
 
-**Statistics.** All intervals come from {cfg['n_boot']} bootstrap resamples of whole test flights, because rows inside a flight are not independent. The paired comparison uses a Wilcoxon signed-rank test.
+Statistics: every interval comes from {cfg['n_boot']} bootstrap resamples of whole test flights, because rows inside a flight are not independent. The paired comparison uses a Wilcoxon signed-rank test.
 
 ## 4. Results
+
+{headline_text(r)}
+
+{baseline_note(r)}
 
 {trust_table_md(r)}
 
@@ -717,7 +853,7 @@ Drop reasons: {', '.join(f'{k} {v}' for k, v in r['drop_reasons'].items())}. Lab
 
 {shap_table(r)}
 
-**Hypotheses.**
+Hypotheses:
 
 {hyp_list(r)}
 
@@ -745,7 +881,7 @@ These are exploratory. They explain the hypothesis results and do not change any
 
 ## 6. Limitations
 
-{chr(10).join('* ' + x for x in LIMITATIONS)}
+{chr(10).join('* ' + x for x in limitations(r))}
 
 ## 7. Future work
 
@@ -759,35 +895,33 @@ These are exploratory. They explain the hypothesis results and do not change any
 ## References
 
 See `references.bib`.
+
+{NOT_OPERATIONAL}
 """
 
 
 def summary(r):
     d, c, cfg = r["data_window"], r["counts"], r["config"]
-    model, base, pair = key_numbers(r)
-    w = cfg["main_window_min"]
-    h2 = r["hypotheses"]["H2"]["status"]
-    verdict = {"supported": "The model beat baseline B on this measure.",
-               "not supported": "The model did not beat baseline B on this measure.",
-               "unclear": "The model and baseline B could not be told apart on this sample."}[h2]
-    return f"""# Glidepath: how early can a ground team trust a landing time?
+    b = baseline_facts(r)
+    month = local_dt(d["first_utc"])
+    windows = ", ".join(str(x) for x in cfg["windows_min"][:-1]) + f" and {cfg['windows_min'][-1]}"
+    return f"""# Glidepath: when can a ground team trust a landing time?
 
-{notice(r)}
+{AUTHOR}, {AFFILIATION}, {month:%B %Y}
 
-**Question.** How early can a ground team at Frankfurt (EDDF) trust a predicted landing time?
+Question: How early can a ground team at Frankfurt (EDDF) trust a predicted landing time?
 
-**Why it matters.** In A-CDM, the estimated landing time drives stand allocation, ground handling and the next departure. A team needs to know from when the estimate stops moving.
+Why it matters: Under A-CDM, the estimated landing time drives stand planning, ground handling and the next departure. A team needs to know when the estimate stops moving.
 
-**Method.**
-1. Predict time to touchdown from open OpenSky ADS-B data with LightGBM quantile models.
-2. Calibrate the interval per distance band to {num(cfg['coverage_target_pct'])} percent target coverage with conformal prediction.
-3. For each flight, find the first prediction from which every later interval is no wider than W and contains the true touchdown.
+What I did: (1) Predicted time to touchdown from open OpenSky ADS-B data with LightGBM quantile models. (2) Calibrated the interval per distance band to {num(cfg['coverage_target_pct'])} percent with conformal prediction. (3) Found each flight's trust point for windows of {windows} minutes.
 
-**Headline.** {r['headline']} Baseline B: {f1(base['median_min'])} minutes. Median paired difference {f1(pair['median_diff_min'])} minutes (95% interval {f1(pair['ci_lo'])} to {f1(pair['ci_hi'])}). {verdict}
+Result: {headline_text(r)} {baseline_note(r, short=True)}
 
-**Honest limit.** This is one evening of data ({f1(d['hours'])} hours, {c['test_flights']} test flights), split in time blocks. The collector keeps running so the study can grow to separate days.
+Limits: one evening of data, {c['test_flights']} test flights, test coverage {pct(b['model_cov'])} percent against the {b['target']} percent target, and touchdown labels estimated from ADS-B.
 
-**Demo.** {DEMO_TEXT}
+Next: run over separate days, add weather, and compare with official landing times if I can get them.
+
+Code: {REPO_LINK.replace('https://', '')}
 
 {NOT_OPERATIONAL}
 """

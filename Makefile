@@ -1,6 +1,6 @@
 PY := .venv/bin/python
 
-.PHONY: install status synthetic test results results-synthetic serve
+.PHONY: install status synthetic test results results-synthetic docs serve
 
 install:
 	python3 -m venv .venv
@@ -20,6 +20,9 @@ results:
 
 results-synthetic: synthetic
 	$(PY) run.py --raw data/synthetic --synthetic
+
+docs:
+	$(PY) run.py --docs-only
 
 serve:
 	$(PY) -m http.server 8000 --directory web

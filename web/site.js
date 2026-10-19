@@ -1,7 +1,7 @@
 // Shared banner and footer. Numbers on the site come from data/results.json.
 (function () {
   const banner = document.getElementById("banner");
-  const PILOT = "Pilot study. Replay of held-out test data. Research demo, not for operational use.";
+  const PILOT = "Pilot study on one evening of data. Replay of test flights the model never saw. Not for operational use.";
   const SYN = "SYNTHETIC TEST DATA. These numbers come from simulated flights, not from Frankfurt. Research demo, not for operational use.";
   if (banner) banner.textContent = PILOT;
   window.glidepathLabel = function (synthetic) {

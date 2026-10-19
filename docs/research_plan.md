@@ -4,27 +4,27 @@ Status: written before any results exist. Any change after the first test run mu
 
 **Question.** How early can a ground team at Frankfurt (EDDF) trust a landing time?
 
-We predict touchdown for arrivals at EDDF from open OpenSky ADS-B data. Each prediction carries an 80 percent interval, calibrated with conformalized quantile regression [romano2019conformalized]. For each flight we measure the trust point and the trust lead defined below. Keys in brackets refer to `references.bib`.
+I predict touchdown for arrivals at EDDF from open OpenSky ADS-B data. Each prediction carries an 80 percent interval, calibrated with conformalized quantile regression [romano2019conformalized]. For each flight I measure the trust point and the trust lead defined below. Keys in brackets refer to `references.bib`.
 
 Each rule below now points to the code that implements it. The constants live in pipeline/config.py and are copied into results/results.json under config.
 
 ## 1. Definitions
 
-**Flight and prediction times.** A flight *i* is one arrival at EDDF with a known touchdown time *T_i*. We make a prediction for flight *i* at each sample time *t_ik*, one per collector poll, from the first sample inside the prediction range until the last sample before touchdown. The prediction range is config.max_distance_nm, and a row also needs a remaining time of at most config.method.max_y_hours (pipeline/data.py, build_rows).
+**Flight and prediction times.** A flight *i* is one arrival at EDDF with a known touchdown time *T_i*. I make a prediction for flight *i* at each sample time *t_ik*, one per collector poll, from the first sample inside the prediction range until the last sample before touchdown. The prediction range is config.max_distance_nm, and a row also needs a remaining time of at most config.method.max_y_hours (pipeline/data.py, build_rows).
 
 **Target.** The target at time *t_ik* is the time remaining to touchdown, *y_ik = T_i − t_ik*, in minutes. *T_i* is the touchdown label from the pipeline. The pipeline takes the first ground report near the airport after the flight was airborne beyond config.method.arrival_start_nm. If the last airborne report is close in time, *T_i* is the midpoint between the two. Otherwise it extrapolates from the last airborne report, capped by config.method.extrap_cap_s. If there is no ground report, a fallback extrapolates from the last low airborne report near the airport. The method used for each flight is counted in results.json (pipeline/data.py, label_flight).
 
 **Interval.** For miscoverage level α, the model gives a lower and an upper bound, *[L_ik, U_ik]*, meant to contain *y_ik* with probability 1 − α. The main setting is α = 0.2, an 80 percent interval.
 
-**Coverage.** The share of rows (flight, time pairs) with *L_ik ≤ y_ik ≤ U_ik*. We report it overall and per distance band. Distance bands are fixed before the test run. The bands are listed in config.bands (pipeline/config.py, BAND_EDGES).
+**Coverage.** The share of rows (flight, time pairs) with *L_ik ≤ y_ik ≤ U_ik*. I report it overall and per distance band. Distance bands are fixed before the test run. The bands are listed in config.bands (pipeline/config.py, BAND_EDGES).
 
-**Interval width.** *U_ik − L_ik*, in minutes. We report the mean per distance band.
+**Interval width.** *U_ik − L_ik*, in minutes. I report the mean per distance band.
 
 **Trust point.** For window *W* (2, 5 or 10 minutes), the trust point of flight *i*, *τ_i(W)*, is the earliest *t_ik* such that, for this sample and every later sample of the same flight, the interval width is less than *W* and the interval contains *y*.
 
 **Trust lead.** *T_i − τ_i(W)*, in minutes.
 
-**Never trusted.** A flight is never trusted at window *W* if no sample meets the trust point condition. This includes a flight whose last interval misses the truth. For medians and paired tests we set the trust lead of a never-trusted flight to zero, since the team never gets a usable lead. We also report the share of never-trusted flights for every result. The pipeline implements this rule (pipeline/trust.py).
+**Never trusted.** A flight is never trusted at window *W* if no sample meets the trust point condition. This includes a flight whose last interval misses the truth. For medians and paired tests I set the trust lead of a never-trusted flight to zero, since the team never gets a usable lead. I also report the share of never-trusted flights for every result. The pipeline implements this rule (pipeline/trust.py).
 
 **Note on use.** The trust point uses the true touchdown, so it is an evaluation measure, not a live signal. It answers how early the estimates would have been safe to act on.
 
@@ -40,7 +40,7 @@ H4. Flights with holding have a shorter trust lead than flights without.
 
 **Grouping rules, fixed now.**
 
-* *Traffic* (H3). Each test flight gets one traffic value. The measure is the mean of the traffic_50 feature (aircraft within the middle traffic radius) over the flight's prediction rows (pipeline/evaluate.py). We split test flights into thirds by this value and compare the top third with the bottom third.
+* *Traffic* (H3). Each test flight gets one traffic value. The measure is the mean of the traffic_50 feature (aircraft within the middle traffic radius) over the flight's prediction rows (pipeline/evaluate.py). I split test flights into thirds by this value and compare the top third with the bottom third.
 * *Holding* (H4). A flight has holding if the pipeline holding detector flags it. The rule is cumulative heading change over the last config.method.turn_window_s seconds above config.method.holding_turn_deg degrees (pipeline/features.py). It was fixed before the first real run.
 
 **Decision rules.** Each hypothesis gets one of three verdicts.
@@ -54,27 +54,27 @@ H4. Flights with holding have a shorter trust lead than flights without.
 
 ## 3. Protocol
 
-**Day splits.** We split by whole days, in time order: training days, then one calibration day, then one test day. No day appears in two splits. The pilot has only one evening, so it uses the time block split from the change log instead (pipeline/splits.py). The split spans are written to results.json under splits.
+**Day splits.** I split by whole days, in time order: training days, then one calibration day, then one test day. No day appears in two splits. The pilot has only one evening, so it uses the time block split from the change log instead (pipeline/splits.py). The split spans are written to results.json under splits.
 
 **Model.** A quantile regression model gives the lower, median and upper quantiles. The conformal step learns one correction per distance band on the calibration day [romano2019conformalized, angelopoulos2023conformal]. The model is LightGBM quantile regression, one model per quantile (pipeline/models.py, QuantileModel).
 
-**Baselines.** Baseline A is distance to the airport divided by ground speed, a point estimate only. Baseline B is the empirical quantiles of remaining time per distance bin and landing direction from the training flights (pipeline/models.py). Both baselines must give an interval so that a trust lead exists. If a baseline gives only a point estimate, we form its interval from the empirical residual quantiles per distance band on the calibration day. This is the same budget of calibration data the model gets.
+**Baselines.** Baseline A is distance to the airport divided by ground speed, a point estimate only. Baseline B is the empirical quantiles of remaining time per distance bin and landing direction from the training flights (pipeline/models.py). Both baselines must give an interval so that a trust lead exists. If a baseline gives only a point estimate, I form its interval from the empirical residual quantiles per distance band on the calibration day. This is the same budget of calibration data the model gets.
 
-**No tuning on calibration or test days.** We pick all hyperparameters, features and band edges using only training days, with cross validation grouped by day. The calibration day is used only to fit the conformal correction. The test day is used once, for the final numbers. If we change anything after seeing test results, we log the change in section 9 and report both runs.
+**No tuning on calibration or test days.** I pick all hyperparameters, features and band edges using only training days, with cross validation grouped by day. The calibration day is used only to fit the conformal correction. The test day is used once, for the final numbers. If I change anything after seeing test results, I log the change in section 9 and report both runs.
 
 ## 4. Statistics
 
-**Unit of resampling.** Rows inside a flight are not independent. We resample whole flights with replacement and recompute every statistic on the resampled set.
+**Unit of resampling.** Rows inside a flight are not independent. I resample whole flights with replacement and recompute every statistic on the resampled set.
 
-**Bootstrap.** 10,000 flight resamples, percentile 95 percent intervals, fixed random seed. We report bootstrap intervals for coverage per band, mean width per band, and median trust lead per window.
+**Bootstrap.** 10,000 flight resamples, percentile 95 percent intervals, fixed random seed. I report bootstrap intervals for coverage per band, mean width per band, and median trust lead per window.
 
 **H1.** Coverage per distance band, before and after calibration, with bootstrap intervals.
 
-**H2.** For each test flight, the paired difference *d_i* = model trust lead minus baseline B trust lead at W = 5 minutes. We report the median of *d_i* with its bootstrap interval, a Wilcoxon signed-rank test on *d_i*, and the matched-pairs rank-biserial correlation as the effect size.
+**H2.** For each test flight, the paired difference *d_i* = model trust lead minus baseline B trust lead at W = 5 minutes. I report the median of *d_i* with its bootstrap interval, a Wilcoxon signed-rank test on *d_i*, and the matched-pairs rank-biserial correlation as the effect size.
 
-**H3 and H4.** Two independent groups of flights. We report the difference in median trust lead with a bootstrap interval (resampling flights within each group), a Mann-Whitney U test, and the rank-biserial correlation as the effect size. We also report group sizes, because a small holding group gives a wide interval.
+**H3 and H4.** Two independent groups of flights. I report the difference in median trust lead with a bootstrap interval (resampling flights within each group), a Mann-Whitney U test, and the rank-biserial correlation as the effect size. I also report group sizes, because a small holding group gives a wide interval.
 
-**Effect sizes first.** We report effect sizes and intervals for every test. P values come second. We test four hypotheses; we report raw p values and also Holm-adjusted p values for H2 to H4. For the pilot, Holm adjustment is not applied (see the change log).
+**Effect sizes first.** I report effect sizes and intervals for every test. P values come second. I test four hypotheses; I report raw p values and also Holm-adjusted p values for H2 to H4. For the pilot, Holm adjustment is not applied (see the change log).
 
 ## 5. Ablations
 
@@ -101,7 +101,7 @@ The pilot shows up to three test flights at W = 5 minutes: a typical flight (tru
 
 ## 7. Threats to validity
 
-* **ADS-B coverage gaps.** OpenSky relies on volunteer receivers [schafer2014bringing]. Gaps near the airport can hide the last part of the approach and shift the touchdown label. We report the share of flights dropped for gaps.
+* **ADS-B coverage gaps.** OpenSky relies on volunteer receivers [schafer2014bringing]. Gaps near the airport can hide the last part of the approach and shift the touchdown label. I report the share of flights dropped for gaps.
 * **30 second sampling.** The trust point can only fall on a sample time, so it carries up to 30 seconds of rounding. This matters most at W = 2 minutes.
 * **Label noise.** Touchdown is inferred from ADS-B, not taken from an official actual landing time. Errors in *T_i* move both the target and the trust lead.
 * **Few days of data.** One calibration day and one test day may not cover rare conditions such as storms or a runway closure. Flight-level bootstrap intervals do not capture day-to-day variation.
@@ -109,7 +109,7 @@ The pilot shows up to three test flights at W = 5 minutes: a typical flight (tru
 * **Marginal coverage only.** The guarantee holds on average over rows, not for each flight or each condition. Per-band calibration helps for distance, but not for traffic or holding.
 * **Trust point is strict.** One miss late in the approach resets the trust point. This is intended, but it makes the measure sensitive to label noise near touchdown.
 
-## 8. What would count against our idea
+## 8. What would count against my idea
 
 * H1: Calibrated coverage on the test day falls outside 75 to 85 percent in at least one distance band.
 * H2: At W = 5 minutes the median paired difference, model minus baseline B, is zero or negative.

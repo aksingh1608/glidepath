@@ -2,7 +2,7 @@
   "label": "PILOT",
   "synthetic": false,
   "generated_utc": "2026-10-19 01:59:18 UTC",
-  "headline": "In this pilot, a typical Frankfurt arrival had a landing time we could trust within 5 minutes, 7.2 minutes before touchdown (24 test flights).",
+  "headline": "On the 24 test flights, the landing time became trustworthy within a 5 minute window a median of 7.2 minutes before touchdown.",
   "config": {
     "alpha": 0.2,
     "coverage_target_pct": 80.0,
@@ -691,7 +691,7 @@
       "n_nonzero": 24,
       "note": "",
       "mean_diff_min": 7.92638888888889,
-      "summary": "H2 supported. Median paired difference in trust lead at W = 5 min, model minus baseline B: 7.2 min, 95% bootstrap interval 4.8 to 7.8 min, 24 flights, Wilcoxon p = 1.19e-07."
+      "summary": "H2 supported. Median paired difference in trust lead at W = 5 min, model minus baseline B: 7.2 min, 95% bootstrap interval 4.8 to 7.8 min, 24 flights, Wilcoxon p = 1.19e-07. Baseline B's mean width (8.2 min) is above W, so it cannot qualify at W = 5. At W = 10 the medians are 7.2 and 1.4 min."
     },
     "H3": {
       "status": "not supported",

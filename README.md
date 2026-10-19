@@ -1,23 +1,22 @@
-<h1 align="center">Glidepath</h1>
+# Glidepath
 
-<p align="center"><b>How early can a ground team at Frankfurt trust a landing time?</b></p>
+How early can a ground team at Frankfurt trust a landing time?
 
-<p align="center">
+Aryan Kumar Singh · MSc student at Berlin School of Business and Innovation, Berlin · [bewithaksingh.com](https://bewithaksingh.com) · [LinkedIn](https://linkedin.com/in/aksingh06) · [GitHub](https://github.com/aksingh1608)
+
+<p>
   <img src="https://img.shields.io/badge/python-3776AB?logo=python&logoColor=white" alt="Python">
-  <img src="https://img.shields.io/badge/model-LightGBM%20quantile-2a78d6" alt="LightGBM quantile">
-  <img src="https://img.shields.io/badge/intervals-conformal%20(CQR)-1baf7a" alt="Conformal">
-  <img src="https://img.shields.io/badge/data-OpenSky%20ADS--B-eb6834" alt="OpenSky">
-  <img src="https://img.shields.io/badge/status-pilot-eda100" alt="Pilot">
-  <img src="https://img.shields.io/badge/license-MIT-52514e" alt="MIT">
+  <img src="https://img.shields.io/badge/data-OpenSky%20ADS--B-eb6834" alt="OpenSky ADS-B data">
+  <img src="https://img.shields.io/badge/license-MIT-52514e" alt="MIT license">
 </p>
 
-> **Pilot study.** One evening of live OpenSky data, 2026-10-18 17:45:52 CEST to 2026-10-19 03:37:12 CEST (9.9 hours). 120 arrivals kept, 24 in the held-out test set. The collector keeps running, so later runs will cover more days.
+> This is a pilot. It uses one evening of live OpenSky data from Frankfurt, 18 October 2026, 17:45 CEST to 03:37 CEST the next morning (9.9 hours). I kept 120 arrivals and held out the last 24 as a test set. The collector is still running, so the next version will use separate days.
 
-> ### In this pilot, a typical Frankfurt arrival had a landing time we could trust within 5 minutes, 7.2 minutes before touchdown (24 test flights).
->
-> Baseline B's median trust lead was 0.0 minutes. Median paired gain 7.2 minutes (95% bootstrap interval 4.8 to 7.8), Wilcoxon p = 1.2e-07, 24 flights.
+> ### On the 24 test flights, the landing time became trustworthy within a 5 minute window a median of 7.2 minutes before touchdown.
 
-[Research note](docs/research_note.md) · [One-page summary](docs/summary.md) · [Research plan](docs/research_plan.md) · [Related work](docs/related_work.md)
+A note on the baseline. Baseline B's intervals average 8.2 minutes wide, so they can never fit a 5 minute window. Its zero lead at W = 5 comes from that width, not from a wrong guess. Two fairer checks: at W = 10, where the baseline can qualify, the model's median lead is 7.2 minutes against 1.4, and the baseline is never trusted on 45.8 percent of flights. The interval score, which adds width and a penalty for every miss, is 6.8 minutes for the model and 10.5 for the baseline. The model's own intervals are too narrow on test: they hold the truth 71.1 percent of the time against an 80 percent target. Baseline B holds it 79.3 percent of the time.
+
+[Research note](docs/research_note.md) · [One page summary](docs/summary.md) · [Research plan](docs/research_plan.md) · [Related work](docs/related_work.md)
 
 <p align="center">
   <img src="results/figures/paired_lead.png" alt="Trust lead per test flight, model against baseline B" width="70%">
@@ -25,38 +24,39 @@
 
 ## The question
 
-At an A-CDM airport the estimated landing time drives stand allocation, ground handling and the next departure. Accuracy on average is not enough. A ramp team needs to know **from when** the estimate stops moving.
+Under A-CDM, the estimated landing time feeds stand planning, ground handling and the next departure. A ramp team needs more than a good estimate on average. It needs to know when the estimate has settled enough to act on.
 
-So we predict touchdown with a calibrated interval and measure, for each flight, when that interval becomes both narrow and right:
+I predict the time to touchdown with an 80 percent interval and look at how each flight's interval behaves as it gets closer:
 
-* **Trust point.** The earliest prediction from which every later interval is no wider than a window W and contains the true touchdown.
-* **Trust lead.** Touchdown time minus trust point. A flight that is never trusted gets a lead of zero.
+* Trust point: the first prediction after which every interval is no wider than W minutes and still contains the real touchdown time.
+* Trust lead: the minutes from the trust point to touchdown. A flight that never reaches a trust point gets zero.
 
-We report W = 2, 5, 10 minutes, with W = 5 minutes as the main case.
+I use W = 2, 5 and 10 minutes. W = 5 is the main case.
 
 ## Results at a glance
 
 | Measure | Model | Baseline B | Baseline A |
 |---|---|---|---|
 | Median trust lead at W = 5 min (higher is better) | **7.2 min** | 0.0 min | no interval |
+| Median trust lead at W = 10 min (higher is better) | **7.2 min** | 1.4 min | no interval |
 | Test flights never trusted at W = 5 min | **0.0%** | 100.0% | no interval |
 | Mean absolute error at 50 nm out | **1.6 min** | 2.7 min | 7.5 min |
 | Interval score, all test rows (lower is better) | **6.8 min** | 10.5 min | no interval |
 | Interval coverage on test (target 80%) | 71.1% | **79.3%** | no interval |
 | Mean interval width on test | **3.4 min** | 8.2 min | no interval |
 
-The model gave the longer trust lead on **100.0%** of test flights and the shorter one on 0.0%. Bold marks the better value in each row.
+Baseline B's intervals are wider than 5 minutes, so the W = 10 row and the interval score are the like for like comparisons.
 
 ### Hypotheses
 
 |  | Hypothesis | Result | Evidence |
 |---|---|---|---|
 | H1 | Conformal calibration brings coverage within 5 points of 80 percent in every distance band. | **Not supported** | Calibrated coverage (%) by band: 0 to 20 nm 74.9, 20 to 50 nm 66.9, 50 to 100 nm 70.2, over 100 nm 71.7. Uncalibrated: 0 to 20 nm 55.2, 20 to 50 nm 28.4, 50 to 100 nm 25.1, over 100 nm 39.1. Target 80 ± 5 points, bands with at least 50 test rows. |
-| H2 | At W = 5 min, the model gives a longer trust lead than baseline B. | **Supported** | Median paired difference in trust lead at W = 5 min, model minus baseline B: 7.2 min, 95% bootstrap interval 4.8 to 7.8 min, 24 flights, Wilcoxon p = 1.19e-07. |
+| H2 | At W = 5 min, the model gives a longer trust lead than baseline B. | **Supported** | Median paired difference in trust lead at W = 5 min, model minus baseline B: 7.2 min, 95% bootstrap interval 4.8 to 7.8 min, 24 flights, Wilcoxon p = 1.19e-07. Baseline B's mean width (8.2 min) is above W, so it cannot qualify at W = 5. At W = 10 the medians are 7.2 and 1.4 min. |
 | H3 | Trust lead is shorter in busy traffic than in quiet traffic. | **Not supported** | Median trust lead 5.2 min in the quietest traffic tercile (8 flights) and 6.9 min in the busiest (8 flights). Difference quiet minus busy -1.7 min, 95% interval -14.8 to 2.6. |
 | H4 | Flights that hold have a shorter trust lead. | Unclear | 1 test flight with holding, 23 without (minimum for a test: 5). |
 
-We report negative results as they are. Full rules are in the [research plan](docs/research_plan.md).
+H1 and H3 did not hold. I report them as they came out. The full rules are in the [research plan](docs/research_plan.md).
 
 ## 1. Trust lead
 
@@ -127,7 +127,7 @@ Each curve shows the share of test flights trusted at or before a given lead, fo
 
 **Interval score.** The interval score adds the width of the interval and a penalty for each miss, so lower is better and a narrow interval cannot win by missing. Over all test rows the model scored 6.8 minutes against 10.5 for baseline B, a difference of -3.7 (-6.2 to -0.6) minutes.
 
-**Calibration drift.** The conformal step reached 80.2 percent coverage on the calibration flights, as it should by design, but 71.1 percent (95% CI 60.1 to 81.4) on the test flights, which landed later in the evening. On the train flights coverage was 99.7 percent: the quantile model fits its own training flights much more tightly than new flights. Both facts point the same way. The gap between calibration and test is the main reason H1 fails, and more days of data, split by day, is the fix.
+**Calibration drift.** The intervals are too narrow on the test flights. Calibration reached 80.2 percent on the calibration flights, which the method guarantees, but only 71.1 percent (95% CI 60.1 to 81.4) on the test flights, which landed later in the evening. On its own training flights the model covers 99.7 percent, so it fits those flights much tighter than new ones. This gap is why H1 fails. Splitting by whole days, once more data is in, is the fix.
 
 <p align="center">
   <img src="results/figures/coverage_drift.png" alt="Coverage per flight over the evening" width="49%">
@@ -252,7 +252,7 @@ Each curve shows the share of test flights trusted at or before a given lead, fo
 
 ## 5. Example flights
 
-The band is the calibrated interval minus the true time; the dashed line is the trust point.
+The band is the calibrated interval minus the true time. The dashed line is the trust point.
 
 <p align="center">
   <img src="results/figures/example_typical.png" alt="Example flight, typical lead" width="80%">
@@ -272,10 +272,10 @@ The band is the calibrated interval minus the true time; the dashed line is the 
   <img src="results/figures/data_overview.png" alt="Arrivals per hour by split" width="90%">
 </p>
 
-* **Source.** OpenSky Network state vectors in a box around Frankfurt, polled live.
-* **Window.** 2026-10-18 17:45:52 CEST to 2026-10-19 03:37:12 CEST (9.9 hours), 431659 state vectors from 1944 aircraft.
-* **Flights.** 2852 tracks, **120 arrivals kept**, 19574 prediction rows, 5 go-arounds.
-* **Split.** Fewer than 3 local days had 150 or more arrivals, so flights were sorted by touchdown time and split into blocks: first 60.0 percent train, next 20.0 percent calibration, the rest test. Train: 72 flights, 2026-10-18 16:03:55 UTC to 2026-10-18 18:29:21 UTC; Calibration: 24 flights, 2026-10-18 18:32:20 UTC to 2026-10-18 19:42:05 UTC; Test: 24 flights, 2026-10-18 19:42:55 UTC to 2026-10-18 21:56:04 UTC.
+* Source: OpenSky Network state vectors in a box around Frankfurt, polled live.
+* Window: 18 October 2026, 17:45 CEST to 03:37 CEST the next morning (9.9 hours). 431659 state vectors from 1944 aircraft.
+* Flights: 2852 tracks, 120 arrivals kept, 19574 prediction rows, 5 go-arounds.
+* Split: Fewer than 3 local days had 150 or more arrivals, so flights were sorted by touchdown time and split into blocks: first 60.0 percent train, next 20.0 percent calibration, the rest test. Train: 72 flights landing 18 October 2026, 18:03 to 20:29 CEST; Calibration: 24 flights landing 18 October 2026, 20:32 to 21:42 CEST; Test: 24 flights landing 18 October 2026, 21:42 to 23:56 CEST.
 
 <details>
 <summary>Why tracks were dropped, and how touchdown was labelled</summary>
@@ -316,18 +316,18 @@ flowchart LR
 6. Calibrate with conformalized quantile regression on the calibration flights, per distance band, to 80 percent target coverage.
 7. On the test flights, find the trust point for W = 2, 5, 10 minutes and compare with baseline B (quantiles of time to touchdown by 5 nm distance bin and landing direction).
 
-**Baselines.** Baseline A is distance divided by ground speed (a point estimate). Baseline B is the empirical quantiles of time to touchdown by distance bin and landing direction, calibrated the same way as the model.
+Baselines: Baseline A is distance divided by ground speed, a point estimate. Baseline B is the empirical quantiles of time to touchdown by distance bin and landing direction, calibrated the same way as the model.
 
-**Statistics.** All intervals resample whole test flights (10000 bootstrap draws), because rows inside a flight are not independent. The paired test is a Wilcoxon signed-rank test.
+Statistics: every interval resamples whole test flights (10000 bootstrap draws), because rows inside a flight are not independent. The paired test is a Wilcoxon signed-rank test.
 
 ## Limitations
 
-* One evening of data. The test set is small and covers one part of one day.
-* The split is a time block inside the same evening, not separate days.
-* OpenSky relies on volunteer receivers, so coverage near the ground has gaps.
-* Touchdown is inferred from ADS-B, not taken from an official landing time, so labels carry noise.
-* Inbound status of other aircraft is taken as known, like a flight plan, for the traffic features.
-* Conformal coverage is marginal: it holds on average over rows, not for each flight.
+* One evening of data. The 24 test flights come from the later part of one evening.
+* Train, calibration and test are time blocks from the same evening, not separate days.
+* OpenSky depends on volunteer receivers, so coverage near the ground at Frankfurt has gaps.
+* Touchdown is estimated from ADS-B, not taken from an official landing time. 87 of 120 touchdowns were estimated across a gap in the reports, not seen between two reports under a minute apart. That error can reach 2 minutes, so read the W = 2 results with care.
+* The traffic features treat other aircraft as known arrivals, the way a flight plan would.
+* Conformal coverage holds on average over rows, not for every single flight.
 
 ## Run it yourself
 
@@ -336,8 +336,9 @@ make install              # create .venv and install packages
 make test                 # unit tests
 make results-synthetic    # SYNTHETIC TEST run of the full pipeline, no API needed
 make status               # what the collector has saved so far
-make results              # run on live data in data/raw/live
-make serve                # replay site on http://localhost:8000
+make results              # rebuild everything from the live data in data/raw/live
+make docs                 # rebuild README and docs from results/results.json only
+make serve                # replay site on your own machine at localhost:8000
 ```
 
 The collector needs an OpenSky API client in `credentials.json`, which is never committed:
@@ -353,7 +354,7 @@ collect_live.py        OpenSky collector, standard library only
 run.py                 one command from raw CSVs to results, figures, docs and site data
 pipeline/              data, features, splits, models, trust, evaluation, diagnostics, figures, docs
 tests/                 leakage, split, trust, conformal and scoring tests
-results/               results.json, tables and figures (every number in this README comes from here)
+results/               results.json, tables and figures
 docs/                  research note, summary, research plan, related work
 web/                   static replay site (MapLibre)
 ```
@@ -377,6 +378,6 @@ Data from [The OpenSky Network](https://opensky-network.org). If you use this wo
 
 ## License
 
-MIT, see [LICENSE](LICENSE). Research demo. Not for operational use.
+MIT, see [LICENSE](LICENSE).
 
-<sub>Generated by `run.py` from `results/results.json` on 2026-10-19 01:59:18 UTC. No number in this file is typed by hand.</sub>
+<sub>All numbers in this README come from results/results.json. Run make results to rebuild it from the raw data. Research demo, not for operational use.</sub>

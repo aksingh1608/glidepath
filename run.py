@@ -4,6 +4,7 @@
 Usage:
     .venv/bin/python run.py --raw data/raw/live
     .venv/bin/python run.py --raw data/synthetic --synthetic
+    .venv/bin/python run.py --docs-only
 """
 
 from __future__ import annotations
@@ -68,11 +69,35 @@ def fit_variant(rows, features, split):
                     "p10_glob": lo_g, "p90_glob": hi_g}
 
 
+def set_text(results):
+    """Headline and hypothesis summaries, written the same way as the docs."""
+    results["headline"] = ((f"{C.SYNTHETIC_LABEL}: " if results["synthetic"] else "")
+                           + docs.headline_text(results))
+    for k, h in results["hypotheses"].items():
+        h["summary"] = docs.hypothesis_text(k, h, results)
+
+
+def docs_only(path="results/results.json"):
+    """Rebuild hypothesis summaries and docs from saved results. No training, no figures."""
+    with open(path) as f:
+        results = json.load(f)
+    set_text(results)
+    for out in (path, "web/data/results.json"):
+        with open(out, "w") as f:
+            json.dump(results, f, indent=2 if out == path else 1)
+    docs.write_all(results)
+    print(f"[{results['label']}] docs rebuilt from {path}")
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--raw", default="data/raw/live")
     ap.add_argument("--synthetic", action="store_true")
+    ap.add_argument("--docs-only", action="store_true",
+                    help="rebuild README and docs from results/results.json only")
     args = ap.parse_args()
+    if args.docs_only:
+        return docs_only()
     synthetic = args.synthetic or os.path.exists(os.path.join(args.raw, "SYNTHETIC"))
     label = C.SYNTHETIC_LABEL if synthetic else "PILOT"
     print(f"[{label}] reading {args.raw}")
@@ -265,8 +290,8 @@ def main():
         "examples": examples, "diagnostics": diag,
     }
     results = clean_json(results)
-    for k, h in results["hypotheses"].items():
-        h["summary"] = docs.hypothesis_text(k, h, results)
+    set_text(results)
+    headline = results["headline"]
     os.makedirs("results/tables", exist_ok=True)
     with open("results/results.json", "w") as f:
         json.dump(results, f, indent=2)
